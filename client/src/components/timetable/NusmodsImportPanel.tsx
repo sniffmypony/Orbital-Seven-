@@ -23,12 +23,10 @@ export default function NusmodsImportPanel({ onImported }: NusmodsImportPanelPro
   const { getToken } = useAuth()
   const [tab, setTab] = useState<Tab>('url')
 
-  // ── URL import state ────────────────────────────────────────────────────────
   const [shareUrl,    setShareUrl]    = useState('')
   const [urlLoading,  setUrlLoading]  = useState(false)
   const [urlError,    setUrlError]    = useState('')
 
-  // ── Manual search state ─────────────────────────────────────────────────────
   const [moduleCode,  setModuleCode]  = useState('')
   const [semester,    setSemester]    = useState('1')
   const [moduleInfo,  setModuleInfo]  = useState<ModuleInfo | null>(null)
@@ -37,7 +35,6 @@ export default function NusmodsImportPanel({ onImported }: NusmodsImportPanelPro
   const [searchError, setSearchError] = useState('')
   const [saveLoad,    setSaveLoad]    = useState(false)
 
-  // ── URL import ──────────────────────────────────────────────────────────────
   async function handleUrlImport() {
     if (!shareUrl.trim()) return
     setUrlLoading(true)
@@ -54,7 +51,6 @@ export default function NusmodsImportPanel({ onImported }: NusmodsImportPanelPro
     }
   }
 
-  // ── Manual search ───────────────────────────────────────────────────────────
   async function handleSearch() {
     if (!moduleCode.trim()) return
     setSearchLoad(true)
@@ -77,15 +73,14 @@ export default function NusmodsImportPanel({ onImported }: NusmodsImportPanelPro
 
   async function handleAddModule() {
     if (!moduleInfo) return
-    // Build selections array from the selected map
+
     const selections = Object.entries(selected).map(([lessonType, classNo]) => ({ lessonType, classNo }))
     if (selections.length === 0) { setSearchError('Select at least one class slot.'); return }
 
-    // Build a fake NUSMods share URL from the selections so we can reuse the import endpoint
     const params = Object.entries(selected)
       .map(([lt, cn]) => `${lt}:${cn}`)
       .join(',')
-    const fakeUrl = `https://nusmods.com/timetable/sem-${semester}/share?${moduleInfo.moduleCode}=${params}`
+    const fakeUrl = `https:
 
     setSaveLoad(true)
     setSearchError('')
@@ -105,7 +100,7 @@ export default function NusmodsImportPanel({ onImported }: NusmodsImportPanelPro
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
-      {/* Tabs */}
+      
       <div className="flex gap-1 mb-4 bg-gray-100 rounded-lg p-1">
         {(['url', 'search'] as Tab[]).map((t) => (
           <button
@@ -121,7 +116,7 @@ export default function NusmodsImportPanel({ onImported }: NusmodsImportPanelPro
         ))}
       </div>
 
-      {/* URL tab */}
+      
       {tab === 'url' && (
         <div className="space-y-3">
           <p className="text-sm text-gray-500">
@@ -142,7 +137,7 @@ export default function NusmodsImportPanel({ onImported }: NusmodsImportPanelPro
         </div>
       )}
 
-      {/* Search tab */}
+      
       {tab === 'search' && (
         <div className="space-y-3">
           <div className="flex gap-2">

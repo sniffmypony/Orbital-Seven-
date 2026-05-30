@@ -1,4 +1,4 @@
-// Helpers for working with NUSMods-style time strings ("0800", "1400", etc.)
+
 
 export function timeToMinutes(time: string): number {
   const h = parseInt(time.slice(0, 2), 10)
@@ -20,7 +20,6 @@ export function formatTimeDisplay(time: string): string {
   return `${display}:${m} ${period}`
 }
 
-// Returns true if two blocks overlap on the same day
 export function blocksOverlap(
   a: { startTime: string; endTime: string },
   b: { startTime: string; endTime: string }

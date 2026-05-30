@@ -22,7 +22,7 @@ interface EditBlockFormProps {
 }
 
 export default function EditBlockForm({ block, onSave, onCancel }: EditBlockFormProps) {
-  // Convert stored "0800" ↔ HTML time input "08:00"
+
   const toInput = (t: string) => `${t.slice(0, 2)}:${t.slice(2)}`
   const toStore = (t: string) => t.replace(':', '')
 
@@ -58,7 +58,7 @@ export default function EditBlockForm({ block, onSave, onCancel }: EditBlockForm
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Block title badge (read-only — rename via title field if needed) */}
+      
       <div
         className="px-3 py-2 rounded-lg text-sm font-semibold text-white truncate"
         style={{ backgroundColor: color }}
@@ -66,7 +66,7 @@ export default function EditBlockForm({ block, onSave, onCancel }: EditBlockForm
         {block.title}
       </div>
 
-      {/* Day */}
+      
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Day</label>
         <select
@@ -78,7 +78,7 @@ export default function EditBlockForm({ block, onSave, onCancel }: EditBlockForm
         </select>
       </div>
 
-      {/* Start / end time */}
+      
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Start</label>
@@ -100,7 +100,7 @@ export default function EditBlockForm({ block, onSave, onCancel }: EditBlockForm
         </div>
       </div>
 
-      {/* Venue */}
+      
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Venue (optional)</label>
         <input
@@ -111,7 +111,7 @@ export default function EditBlockForm({ block, onSave, onCancel }: EditBlockForm
         />
       </div>
 
-      {/* Colour */}
+      
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Colour</label>
         <div className="flex gap-2 flex-wrap">

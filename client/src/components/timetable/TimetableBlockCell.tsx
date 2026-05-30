@@ -16,9 +16,9 @@ export default function TimetableBlockCell({
   onDelete,
   onEdit,
 }: TimetableBlockCellProps) {
-  // Use actual duration in minutes so the threshold is independent of grid scale.
+
   const durationMin = timeToMinutes(block.endTime) - timeToMinutes(block.startTime)
-  const isShort     = durationMin < 45   // < 45 min → condensed (title only)
+  const isShort     = durationMin < 45
 
   return (
     <div
@@ -26,7 +26,7 @@ export default function TimetableBlockCell({
       style={{
         top:        `${topPercent}%`,
         height:     `${heightPercent}%`,
-        backgroundColor: block.color + '33', // 20 % opacity fill
+        backgroundColor: block.color + '33',
         borderLeft: `3px solid ${block.color}`,
       }}
     >
@@ -47,7 +47,7 @@ export default function TimetableBlockCell({
         <p className="text-xs text-gray-400 leading-tight truncate">{block.venue}</p>
       )}
 
-      {/* Edit button — visible on hover */}
+      
       <button
         onClick={(e) => { e.stopPropagation(); onEdit(block) }}
         className="absolute top-1 right-6 hidden group-hover:flex w-4 h-4 items-center justify-center rounded bg-white/80 text-gray-500 hover:text-blue-500 text-xs leading-none"
@@ -56,7 +56,7 @@ export default function TimetableBlockCell({
         ✎
       </button>
 
-      {/* Delete button — visible on hover */}
+      
       <button
         onClick={(e) => { e.stopPropagation(); onDelete(block.id) }}
         className="absolute top-1 right-1 hidden group-hover:flex w-4 h-4 items-center justify-center rounded bg-white/80 text-gray-500 hover:text-red-500 text-xs leading-none"

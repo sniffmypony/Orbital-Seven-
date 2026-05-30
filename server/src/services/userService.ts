@@ -5,8 +5,6 @@ import { users } from '../db/schema'
 
 const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY })
 
-// Looks up the DB user by Clerk ID. Creates the record if this is the user's
-// first request (avoids needing a webhook for user sync in early milestones).
 export async function getOrCreateDbUser(clerkId: string) {
   const existing = await db
     .select()

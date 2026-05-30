@@ -7,14 +7,10 @@ interface NavItem {
   href: string
 }
 
-// Nav items will be uncommented as each milestone is completed.
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard',  href: '/' },
   { label: 'Timetable', href: '/timetable' },
-  // M2: { label: 'Friends', href: '/friends' },
-  // M3: { label: 'Free Time', href: '/free-time' },
-  // M4: { label: 'Events', href: '/events' },
-  // M5: { label: 'Feed', href: '/feed' },
+
 ]
 
 interface AppShellProps {
@@ -29,12 +25,12 @@ export default function AppShell({ children }: AppShellProps) {
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Logo */}
+            
             <Link to="/" className="text-xl font-bold text-primary-600 tracking-tight">
               SyncUp
             </Link>
 
-            {/* Desktop nav */}
+            
             <nav className="hidden sm:flex items-center gap-1">
               {NAV_ITEMS.map((item) => (
                 <Link
@@ -52,7 +48,7 @@ export default function AppShell({ children }: AppShellProps) {
               ))}
             </nav>
 
-            {/* User menu */}
+            
             <UserButton afterSignOutUrl="/" />
           </div>
         </div>

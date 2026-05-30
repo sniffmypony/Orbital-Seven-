@@ -1,4 +1,4 @@
-// Client-side time utilities (mirrors server/src/utils/timeBlocks.ts)
+
 
 export function timeToMinutes(time: string): number {
   return parseInt(time.slice(0, 2), 10) * 60 + parseInt(time.slice(2, 4), 10)

@@ -13,8 +13,6 @@ import { parseNusmodsShareUrl } from '../utils/nusmodsUrlParser'
 
 const router = Router()
 
-// ── GET /api/timetable ────────────────────────────────────────────────────────
-// Returns all blocks for the authenticated user.
 router.get('/', requireAuth, async (req, res, next) => {
   try {
     const clerkId = getClerkUserId(req)
@@ -31,8 +29,6 @@ router.get('/', requireAuth, async (req, res, next) => {
   }
 })
 
-// ── POST /api/timetable ───────────────────────────────────────────────────────
-// Creates a single timetable block (used for custom blocks and manual module entry).
 router.post('/', requireAuth, async (req, res, next) => {
   try {
     const clerkId = getClerkUserId(req)
@@ -68,10 +64,6 @@ router.post('/', requireAuth, async (req, res, next) => {
   }
 })
 
-// ── POST /api/timetable/import ────────────────────────────────────────────────
-// Imports a full timetable from a NUSMods share URL.
-// Deletes existing NUSMods blocks for the same modules before inserting new ones,
-// so re-importing a URL is idempotent.
 router.post('/import', requireAuth, async (req, res, next) => {
   try {
     const clerkId = getClerkUserId(req)
@@ -86,7 +78,6 @@ router.post('/import', requireAuth, async (req, res, next) => {
     const parsed     = parseNusmodsShareUrl(shareUrl)
     const academicYear = year ?? process.env.NUSMODS_ACADEMIC_YEAR ?? '2024-2025'
 
-    // Find which colours are already taken by existing modules
     const existingBlocks = await db
       .select({ moduleCode: timetableBlocks.moduleCode, color: timetableBlocks.color })
       .from(timetableBlocks)
@@ -100,7 +91,7 @@ router.post('/import', requireAuth, async (req, res, next) => {
     const createdBlocks = []
 
     for (const { moduleCode, selections } of parsed.modules) {
-      // Assign a colour if this module is new
+
       if (!colorMap.has(moduleCode)) {
         colorMap.set(moduleCode, MODULE_COLORS[colorMap.size % MODULE_COLORS.length])
       }
@@ -108,7 +99,6 @@ router.post('/import', requireAuth, async (req, res, next) => {
 
       const moduleData = await getModuleData(moduleCode, parsed.semester, academicYear)
 
-      // Remove existing NUSMods blocks for this module+semester before re-importing
       await db
         .delete(timetableBlocks)
         .where(
@@ -152,7 +142,6 @@ router.post('/import', requireAuth, async (req, res, next) => {
   }
 })
 
-// ── DELETE /api/timetable/:id ─────────────────────────────────────────────────
 router.delete('/:id', requireAuth, async (req, res, next) => {
   try {
     const clerkId = getClerkUserId(req)
@@ -173,8 +162,6 @@ router.delete('/:id', requireAuth, async (req, res, next) => {
   }
 })
 
-// ── DELETE /api/timetable/module/:moduleCode ──────────────────────────────────
-// Removes all NUSMods blocks for an entire module (used by "remove module" button).
 router.delete('/module/:moduleCode', requireAuth, async (req, res, next) => {
   try {
     const clerkId = getClerkUserId(req)
@@ -196,8 +183,6 @@ router.delete('/module/:moduleCode', requireAuth, async (req, res, next) => {
   }
 })
 
-// ── PUT /api/timetable/:id ────────────────────────────────────────────────────
-// Updates a custom block (NUSMods blocks are replaced via re-import, not edited).
 router.put('/:id', requireAuth, async (req, res, next) => {
   try {
     const clerkId = getClerkUserId(req)
@@ -205,8 +190,6 @@ router.put('/:id', requireAuth, async (req, res, next) => {
 
     const { title, day, startTime, endTime, weeks, venue, color } = req.body
 
-    // Any block can be edited (NUSMods or custom) — the user may need to
-    // override times or venues that NUSMods imported incorrectly.
     const [updated] = await db
       .update(timetableBlocks)
       .set({ title, day, startTime, endTime, weeks, venue, color })

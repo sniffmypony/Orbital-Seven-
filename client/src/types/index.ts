@@ -1,5 +1,4 @@
-// Shared TypeScript types used across the client.
-// Keep these in sync with the Drizzle schema in server/src/db/schema.ts.
+
 
 export type Day =
   | 'Monday'
@@ -35,12 +34,12 @@ export interface TimetableBlock {
   classNo: string | null
   title: string
   day: Day
-  startTime: string  // "0800" 24-hour format
-  endTime: string    // "1000" 24-hour format
-  weeks: number[]    // [1, 2, 3, ..., 13]
+  startTime: string
+  endTime: string
+  weeks: number[]
   venue: string | null
   source: TimetableSource
-  color: string      // hex, e.g. "#6366f1"
+  color: string
   createdAt: string
 }
 

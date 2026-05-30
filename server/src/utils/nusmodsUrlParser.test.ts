@@ -26,7 +26,7 @@ describe('parseNusmodsShareUrl — old format (pre-2024)', () => {
 })
 
 describe('parseNusmodsShareUrl — new format (2024+, semicolons + parentheses)', () => {
-  // Mirrors a real NUSMods sem-2 share URL with the new format
+
   const newFormatUrl =
     'https://nusmods.com/timetable/sem-2/share?' +
     'CFG1004=&CS2030S=LAB:(1);REC:(24);LEC:(44)&HSH1000=TUT:(34)' +
@@ -48,7 +48,7 @@ describe('parseNusmodsShareUrl — new format (2024+, semicolons + parentheses)'
   })
 
   it('expands comma-separated class numbers into separate selections', () => {
-    // MA1522=LEC:(1,3) → two selections
+
     const { modules } = parseNusmodsShareUrl(newFormatUrl)
     const ma1522 = modules.find((m) => m.moduleCode === 'MA1522')!
     expect(ma1522.selections).toEqual([
@@ -58,7 +58,7 @@ describe('parseNusmodsShareUrl — new format (2024+, semicolons + parentheses)'
   })
 
   it('handles mixed single and multi class numbers in one module', () => {
-    // MA2104=TUT:(6);LEC:(7,11)
+
     const { modules } = parseNusmodsShareUrl(newFormatUrl)
     const ma2104 = modules.find((m) => m.moduleCode === 'MA2104')!
     expect(ma2104.selections).toEqual([
@@ -95,7 +95,7 @@ describe('parseNusmodsShareUrl — shared edge cases', () => {
   })
 
   it('throws when no modules have any selections', () => {
-    // All modules empty → should throw
+
     expect(() =>
       parseNusmodsShareUrl('https://nusmods.com/timetable/sem-1/share?CFG1004=')
     ).toThrow('No modules found')

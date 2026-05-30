@@ -1,5 +1,4 @@
-// Typed fetch wrapper for all backend API calls.
-// Pass the Clerk session token on every authenticated request.
+
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
 
@@ -21,7 +20,6 @@ async function request<T>(
     throw new Error(body.message ?? 'Request failed')
   }
 
-  // 204 No Content — return undefined cast to T
   if (res.status === 204) return undefined as T
 
   return res.json() as Promise<T>

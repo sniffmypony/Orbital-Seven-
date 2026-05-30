@@ -4,13 +4,12 @@ import TimetableBlockCell from './TimetableBlockCell'
 
 const DAYS: Day[]     = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 const DAY_SHORT       = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
-const START_HOUR      = 8   // 08:00
-const END_HOUR        = 22  // 22:00
+const START_HOUR      = 8
+const END_HOUR        = 22
 const TOTAL_MINUTES   = (END_HOUR - START_HOUR) * 60
 const START_MINUTES   = START_HOUR * 60
 const HOUR_LABELS     = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i)
-// 60 px per hour × 14 hours = 840 px — gives each 1-hour block enough room
-// to display title, time, and venue without clipping.
+
 const GRID_HEIGHT_PX  = 840
 
 interface TimetableGridProps {
@@ -32,7 +31,7 @@ export default function TimetableGrid({ blocks, onDelete, onEdit }: TimetableGri
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      {/* Header row */}
+      
       <div className="flex border-b border-gray-200">
         <div className={`${LABEL_W} shrink-0`} />
         {DAYS.map((day, i) => (
@@ -45,9 +44,9 @@ export default function TimetableGrid({ blocks, onDelete, onEdit }: TimetableGri
         ))}
       </div>
 
-      {/* Grid body — 60 px/hour so 1-hour blocks show all three lines */}
+      
       <div className="flex" style={{ height: `${GRID_HEIGHT_PX}px` }}>
-        {/* Hour labels */}
+        
         <div className={`${LABEL_W} shrink-0 relative`}>
           {HOUR_LABELS.map((h) => (
             <div
@@ -61,12 +60,12 @@ export default function TimetableGrid({ blocks, onDelete, onEdit }: TimetableGri
           ))}
         </div>
 
-        {/* Day columns */}
+        
         {DAYS.map((day) => {
           const dayBlocks = blocks.filter((b) => b.day === day)
           return (
             <div key={day} className="flex-1 relative border-l border-gray-100">
-              {/* Hour grid lines */}
+              
               {HOUR_LABELS.map((h) => (
                 <div
                   key={h}
@@ -75,7 +74,7 @@ export default function TimetableGrid({ blocks, onDelete, onEdit }: TimetableGri
                 />
               ))}
 
-              {/* Blocks */}
+              
               {dayBlocks.map((block) => {
                 const { topPercent, heightPercent } = topAndHeight(block)
                 return (

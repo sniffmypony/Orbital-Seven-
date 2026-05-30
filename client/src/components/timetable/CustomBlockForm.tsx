@@ -25,7 +25,7 @@ export default function CustomBlockForm({ onSubmit, onCancel }: CustomBlockFormP
   const [saving,    setSaving]    = useState(false)
   const [err,       setErr]       = useState('')
 
-  const toNusTime = (t: string) => t.replace(':', '')   // "08:00" → "0800"
+  const toNusTime = (t: string) => t.replace(':', '')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

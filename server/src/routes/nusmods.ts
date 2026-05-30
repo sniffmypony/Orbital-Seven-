@@ -4,8 +4,6 @@ import { getModuleData, groupLessonsByType } from '../services/nusmodsService'
 
 const router = Router()
 
-// GET /api/nusmods/module/:code?semester=1&year=2024-2025
-// Returns module metadata + timetable grouped by lesson type.
 router.get('/module/:code', requireAuth, async (req, res, next) => {
   try {
     const { code }   = req.params

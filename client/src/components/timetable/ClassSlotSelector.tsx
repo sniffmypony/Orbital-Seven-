@@ -1,5 +1,4 @@
-// Displays available class slots grouped by lesson type, mirrors the NUSMods planner.
-// User picks one classNo per lessonType.
+
 
 interface Lesson {
   classNo:   string
@@ -10,8 +9,8 @@ interface Lesson {
 }
 
 interface ClassSlotSelectorProps {
-  lessonTypes: Record<string, Lesson[]>   // lessonType → array of class options
-  selected:    Record<string, string>     // lessonType → selected classNo
+  lessonTypes: Record<string, Lesson[]>
+  selected:    Record<string, string>
   onChange:    (lessonType: string, classNo: string) => void
 }
 
@@ -22,7 +21,7 @@ function formatTime(t: string): string {
 }
 
 export default function ClassSlotSelector({ lessonTypes, selected, onChange }: ClassSlotSelectorProps) {
-  // Deduplicate by classNo — multiple rows can share the same classNo (e.g. twice-weekly tutorial)
+
   const uniqueByClassNo = (lessons: Lesson[]) => {
     const seen = new Set<string>()
     return lessons.filter((l) => { if (seen.has(l.classNo)) return false; seen.add(l.classNo); return true })
@@ -37,7 +36,7 @@ export default function ClassSlotSelector({ lessonTypes, selected, onChange }: C
           </p>
           <div className="flex flex-col gap-1">
             {uniqueByClassNo(lessons).map((lesson) => {
-              // Find all slots for this classNo (might be multiple days)
+
               const allSlots = lessons.filter((l) => l.classNo === lesson.classNo)
               const isSelected = selected[lessonType] === lesson.classNo
 
