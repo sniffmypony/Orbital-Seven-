@@ -15,6 +15,9 @@ export const users = pgTable('users', {
   email:       text('email').notNull(),
   displayName: text('display_name').notNull(),
   avatarUrl:   text('avatar_url'),
+  bio:         text('bio'),
+  major:       text('major'),
+  defaultBlockVisibility: text('default_block_visibility').notNull().default('friends'),
   createdAt:   timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt:   timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 })
@@ -31,10 +34,29 @@ export const timetableBlocks = pgTable('timetable_blocks', {
   endTime:     text('end_time').notNull(),
   weeks:       json('weeks').$type<number[]>().notNull(),
   venue:       text('venue'),
+  note:        text('note'),
   source:      text('source').notNull(),
   color:       text('color').notNull(),
+  visibility:  text('visibility').notNull().default('friends'),
   createdAt:   timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })
+
+export const timetableBlockVisibility = pgTable('timetable_block_visibility', {
+  id:      uuid('id').primaryKey().defaultRandom(),
+  blockId: uuid('block_id').notNull().references(() => timetableBlocks.id, { onDelete: 'cascade' }),
+  userId:  uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+}, (t) => ({
+  uniq: unique().on(t.blockId, t.userId),
+}))
+
+export const userBlocks = pgTable('user_blocks', {
+  id:        uuid('id').primaryKey().defaultRandom(),
+  blockerId: uuid('blocker_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  blockedId: uuid('blocked_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => ({
+  uniq: unique().on(t.blockerId, t.blockedId),
+}))
 
 export const nusmodsCache = pgTable('nusmods_cache', {
   id:           uuid('id').primaryKey().defaultRandom(),

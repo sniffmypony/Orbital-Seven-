@@ -8,6 +8,34 @@
       "when": 1779957803855,
       "tag": "0000_calm_newton_destine",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780380014748,
+      "tag": "0001_privacy_and_blocking",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780382985162,
+      "tag": "0002_default_friends_visibility",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1780384120527,
+      "tag": "0003_profile_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780408711896,
+      "tag": "0004_block_note",
+      "breakpoints": true
     }
   ]
 }
