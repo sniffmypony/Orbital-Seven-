@@ -25,10 +25,14 @@ export async function getOrCreateDbUser(clerkId: string) {
     clerkUser.username ||
     'Anonymous'
 
-  const [newUser] = await db
+  const inserted = await db
     .insert(users)
     .values({ clerkId, email, displayName, avatarUrl: clerkUser.imageUrl })
+    .onConflictDoNothing({ target: users.clerkId })
     .returning()
 
-  return newUser
+  if (inserted.length > 0) return inserted[0]
+
+  const rows = await db.select().from(users).where(eq(users.clerkId, clerkId)).limit(1)
+  return rows[0]
 }
