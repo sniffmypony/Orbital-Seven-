@@ -27,17 +27,20 @@ app.get('/api/health', (_req, res) => {
 })
 
 const timetableRouter = require('./routes/timetable').default
-
 const nusmodsRouter   = require('./routes/nusmods').default
+const friendsRouter   = require('./routes/friends').default
+const profileRouter   = require('./routes/profile').default
 app.use('/api/timetable', timetableRouter)
 app.use('/api/nusmods',   nusmodsRouter)
+app.use('/api/friends',   friendsRouter)
+app.use('/api/profile',   profileRouter)
 
 app.use(errorHandler)
 
 if (process.env.NODE_ENV !== 'production') {
   const port = Number(process.env.PORT ?? 3001)
   app.listen(port, () => {
-    console.log(`Server running at http:
+    console.log(`Server running at http://localhost:${port}`)
   })
 }
 
