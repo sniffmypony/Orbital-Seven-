@@ -1,6 +1,8 @@
 import { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { UserButton } from '@clerk/clerk-react'
+import { useTheme } from '@/lib/theme'
+import SceneryBackground from './SceneryBackground'
 
 interface NavItem {
   label: string
@@ -8,9 +10,10 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard',  href: '/' },
+  { label: 'Dashboard', href: '/' },
   { label: 'Timetable', href: '/timetable' },
-
+  { label: 'Friends',   href: '/friends' },
+  { label: 'Profile',   href: '/profile' },
 ]
 
 interface AppShellProps {
@@ -19,28 +22,42 @@ interface AppShellProps {
 
 export default function AppShell({ children }: AppShellProps) {
   const { pathname } = useLocation()
+  const { nightOwl } = useTheme()
+
+  const isActive = (href: string) =>
+    href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`)
+
+  const headerClass = nightOwl
+    ? 'bg-slate-900/90 backdrop-blur border-t-4 border-violet-500 shadow-lg'
+    : 'bg-white/90 backdrop-blur border-t-4 border-primary-500 shadow-sm'
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+    <div className="min-h-screen transition-colors duration-[1600ms]">
+      <SceneryBackground />
+
+      <header className={`${headerClass} sticky top-0 z-10 transition-colors duration-[1600ms]`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            
-            <Link to="/" className="text-xl font-bold text-primary-600 tracking-tight">
-              SyncUp
+
+            <Link to="/" className="text-xl font-bold tracking-tight">
+              <span className={nightOwl ? 'text-white' : 'text-gray-900'}>Sync</span>
+              <span className={nightOwl ? 'text-violet-400' : 'text-primary-600'}>Up</span>
             </Link>
 
-            
             <nav className="hidden sm:flex items-center gap-1">
               {NAV_ITEMS.map((item) => (
                 <Link
                   key={item.href}
                   to={item.href}
                   className={[
-                    'px-3 py-2 rounded-md text-sm font-medium transition-colors',
-                    pathname === item.href
-                      ? 'bg-primary-50 text-primary-700'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                    'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150',
+                    isActive(item.href)
+                      ? nightOwl
+                        ? 'bg-violet-600 text-white shadow-sm'
+                        : 'bg-primary-600 text-white shadow-sm'
+                      : nightOwl
+                        ? 'text-slate-300 hover:text-white hover:bg-white/10'
+                        : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100',
                   ].join(' ')}
                 >
                   {item.label}
@@ -48,14 +65,15 @@ export default function AppShell({ children }: AppShellProps) {
               ))}
             </nav>
 
-            
             <UserButton afterSignOutUrl="/" />
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {children}
+        <div className="rounded-3xl bg-white/65 backdrop-blur-md shadow-xl px-5 py-6 sm:px-8 sm:py-8 transition-colors duration-[1600ms]">
+          {children}
+        </div>
       </main>
     </div>
   )

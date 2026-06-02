@@ -1,3 +1,40 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  body {
+    @apply antialiased bg-slate-50 text-gray-900;
+  }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.2; }
+  50%      { opacity: 1; }
+}
+
+@keyframes drift {
+  from { transform: translateX(0); }
+  to   { transform: translateX(40px); }
+}
+
+@keyframes sway {
+  0%, 100% { transform: rotate(-2deg); }
+  50%      { transform: rotate(2deg); }
+}
+
+.scenery-star {
+  position: absolute;
+  border-radius: 9999px;
+  background: #ffffff;
+  animation: twinkle 3s ease-in-out infinite;
+}
+
+.scenery-cloud {
+  animation: drift 14s ease-in-out infinite alternate;
+}
+
+.scenery-owl {
+  animation: sway 4s ease-in-out infinite;
+  transform-origin: bottom center;
+}
