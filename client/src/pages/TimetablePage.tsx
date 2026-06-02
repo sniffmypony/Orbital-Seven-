@@ -1,18 +1,25 @@
 import { useState } from 'react'
 import { useTimetable } from '@/hooks/useTimetable'
+import { useFriends } from '@/hooks/useFriends'
+import { useTheme } from '@/lib/theme'
 import type { TimetableBlock } from '@/types'
 import TimetableGrid from '@/components/timetable/TimetableGrid'
 import NusmodsImportPanel from '@/components/timetable/NusmodsImportPanel'
 import CustomBlockForm from '@/components/timetable/CustomBlockForm'
 import EditBlockForm from '@/components/timetable/EditBlockForm'
+import ManualFillForm from '@/components/timetable/ManualFillForm'
 import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
 import { getAcademicLabel, formatFullDate } from '@/lib/academicCalendar'
+import type { FailedImport } from '@/types'
 
 export default function TimetablePage() {
   const { blocks, loading, error, addBlock, deleteBlock, deleteModule, editBlock, refetch } = useTimetable()
+  const { friends } = useFriends()
+  const { nightOwl, toggle } = useTheme()
   const [showCustom,   setShowCustom]   = useState(false)
   const [editingBlock, setEditingBlock] = useState<TimetableBlock | null>(null)
+  const [failedImports, setFailedImports] = useState<FailedImport[]>([])
 
   const today        = new Date()
   const fullDate     = formatFullDate(today)
@@ -37,16 +44,33 @@ export default function TimetablePage() {
   return (
     <div className="space-y-6">
       
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">My Timetable</h1>
           <p className="text-sm text-gray-500 mt-0.5">
             Import from NUSMods or add your own blocks.
           </p>
         </div>
-        <Button variant="secondary" size="sm" onClick={() => setShowCustom(true)}>
-          + Custom block
-        </Button>
+        <div className="flex items-center gap-3">
+          <label
+            className={[
+              'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium cursor-pointer select-none transition-colors',
+              nightOwl ? 'bg-violet-100 text-violet-800' : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+            ].join(' ')}
+            title="Extend the timetable to 2am and switch to night mode"
+          >
+            <input
+              type="checkbox"
+              checked={nightOwl}
+              onChange={toggle}
+              className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+            />
+            🦉 Night Owl timetable
+          </label>
+          <Button variant="secondary" size="sm" onClick={() => setShowCustom(true)}>
+            + Custom block
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -56,7 +80,7 @@ export default function TimetablePage() {
       )}
 
       
-      <NusmodsImportPanel onImported={refetch} />
+      <NusmodsImportPanel onImported={refetch} onFailed={setFailedImports} />
 
       
       {modules.length > 0 && (
@@ -106,6 +130,7 @@ export default function TimetablePage() {
           blocks={blocks}
           onDelete={deleteBlock}
           onEdit={setEditingBlock}
+          nightOwl={nightOwl}
         />
       )}
 
@@ -116,6 +141,7 @@ export default function TimetablePage() {
         title="Add custom block"
       >
         <CustomBlockForm
+          friends={friends}
           onSubmit={async (block) => {
             await addBlock(block)
             setShowCustom(false)
@@ -133,6 +159,7 @@ export default function TimetablePage() {
         {editingBlock && (
           <EditBlockForm
             block={editingBlock}
+            friends={friends}
             onSave={async (updates) => {
               await editBlock(editingBlock.id, updates)
               setEditingBlock(null)
@@ -140,6 +167,23 @@ export default function TimetablePage() {
             onCancel={() => setEditingBlock(null)}
           />
         )}
+      </Modal>
+
+      <Modal
+        open={failedImports.length > 0}
+        onClose={() => setFailedImports([])}
+        title="Fill in missing class details"
+      >
+        <ManualFillForm
+          failed={failedImports}
+          onSubmit={async (blocks) => {
+            for (const block of blocks) {
+              await addBlock(block)
+            }
+            setFailedImports([])
+          }}
+          onCancel={() => setFailedImports([])}
+        />
       </Modal>
     </div>
   )

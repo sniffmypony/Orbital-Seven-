@@ -1,6 +1,9 @@
 import { useState } from 'react'
-import type { Day, TimetableBlock } from '@/types'
+import type { Day, TimetableBlock, BlockVisibility, Friend } from '@/types'
+import { useTheme } from '@/lib/theme'
+import { validateBlockTimes } from '@/lib/timeUtils'
 import Button from '@/components/ui/Button'
+import BlockVisibilitySelector from './BlockVisibilitySelector'
 
 const DAYS: Day[] = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
 
@@ -12,28 +15,31 @@ const COLORS = [
 interface CustomBlockFormProps {
   onSubmit: (block: Omit<TimetableBlock, 'id' | 'userId' | 'createdAt'>) => Promise<void>
   onCancel: () => void
+  friends: Friend[]
 }
 
-export default function CustomBlockForm({ onSubmit, onCancel }: CustomBlockFormProps) {
-  const [title,     setTitle]     = useState('')
-  const [day,       setDay]       = useState<Day>('Monday')
-  const [startTime, setStartTime] = useState('08:00')
-  const [endTime,   setEndTime]   = useState('09:00')
-  const [venue,     setVenue]     = useState('')
-  const [color,     setColor]     = useState(COLORS[0])
-  const [repeat,    setRepeat]    = useState<'weekly' | 'once'>('weekly')
-  const [saving,    setSaving]    = useState(false)
-  const [err,       setErr]       = useState('')
+export default function CustomBlockForm({ onSubmit, onCancel, friends }: CustomBlockFormProps) {
+  const { nightOwl, setNightOwl } = useTheme()
+  const [title,      setTitle]      = useState('')
+  const [day,        setDay]        = useState<Day>('Monday')
+  const [startTime,  setStartTime]  = useState('08:00')
+  const [endTime,    setEndTime]    = useState('09:00')
+  const [venue,      setVenue]      = useState('')
+  const [note,       setNote]       = useState('')
+  const [color,      setColor]      = useState(COLORS[0])
+  const [repeat,     setRepeat]     = useState<'weekly' | 'once'>('weekly')
+  const [visibility, setVisibility] = useState<BlockVisibility>('friends')
+  const [visibleTo,  setVisibleTo]  = useState<string[]>([])
+  const [saving,     setSaving]     = useState(false)
+  const [err,        setErr]        = useState('')
+  const [nightPrompt, setNightPrompt] = useState(false)
 
   const toNusTime = (t: string) => t.replace(':', '')
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!title.trim()) { setErr('Title is required.'); return }
-    if (toNusTime(startTime) >= toNusTime(endTime)) { setErr('End time must be after start time.'); return }
-
+  async function persist() {
     setSaving(true)
     setErr('')
+    setNightPrompt(false)
     try {
       await onSubmit({
         moduleCode: null,
@@ -47,14 +53,42 @@ export default function CustomBlockForm({ onSubmit, onCancel }: CustomBlockFormP
           ? [1,2,3,4,5,6,7,8,9,10,11,12,13]
           : [1],
         venue:  venue.trim() || null,
+        note:   note.trim() || null,
         source: 'custom',
         color,
+        visibility,
+        visibleTo,
       })
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Failed to save.')
-    } finally {
       setSaving(false)
     }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setNightPrompt(false)
+    if (!title.trim()) { setErr('Title is required.'); return }
+
+    const s = toNusTime(startTime)
+    const en = toNusTime(endTime)
+    const error = validateBlockTimes(s, en, nightOwl)
+    if (error) {
+      if (!nightOwl && validateBlockTimes(s, en, true) === null) {
+        setErr('')
+        setNightPrompt(true)
+        return
+      }
+      setErr(error)
+      return
+    }
+
+    await persist()
+  }
+
+  async function enableNightOwlAndSave() {
+    setNightOwl(true)
+    await persist()
   }
 
   return (
@@ -125,6 +159,17 @@ export default function CustomBlockForm({ onSubmit, onCancel }: CustomBlockFormP
       </div>
 
       <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Note (optional)</label>
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="e.g. Quiz this week, 19 Jan"
+          rows={2}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500"
+        />
+      </div>
+
+      <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Colour</label>
         <div className="flex gap-2 flex-wrap">
           {COLORS.map((c) => (
@@ -142,7 +187,31 @@ export default function CustomBlockForm({ onSubmit, onCancel }: CustomBlockFormP
         </div>
       </div>
 
+      <BlockVisibilitySelector
+        visibility={visibility}
+        visibleTo={visibleTo}
+        friends={friends}
+        onChange={(v, list) => { setVisibility(v); setVisibleTo(list) }}
+      />
+
       {err && <p className="text-sm text-red-600">{err}</p>}
+
+      {nightPrompt && (
+        <div className="bg-violet-50 border border-violet-200 rounded-lg px-4 py-3 space-y-2">
+          <p className="text-sm text-violet-900">
+            🦉 This block runs past 10:00 PM. The Night Owl calendar (8:00 AM – 2:00 AM) is needed
+            for late-night blocks. Enable it and add this block?
+          </p>
+          <div className="flex gap-2">
+            <Button type="button" size="sm" loading={saving} onClick={enableNightOwlAndSave}>
+              Enable Night Owl &amp; add
+            </Button>
+            <Button type="button" size="sm" variant="secondary" onClick={() => setNightPrompt(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-2 pt-1">
         <Button type="submit" loading={saving} className="flex-1">Add block</Button>

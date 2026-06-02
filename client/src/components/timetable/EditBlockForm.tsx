@@ -1,6 +1,9 @@
 import { useState } from 'react'
-import type { Day, TimetableBlock } from '@/types'
+import type { Day, TimetableBlock, BlockVisibility, Friend } from '@/types'
+import { useTheme } from '@/lib/theme'
+import { validateBlockTimes } from '@/lib/timeUtils'
 import Button from '@/components/ui/Button'
+import BlockVisibilitySelector from './BlockVisibilitySelector'
 
 const DAYS: Day[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
@@ -12,48 +15,81 @@ const COLORS = [
 interface EditBlockFormProps {
   block:    TimetableBlock
   onSave:   (updates: {
-    day:       Day
-    startTime: string
-    endTime:   string
-    venue:     string | null
-    color:     string
+    day:        Day
+    startTime:  string
+    endTime:    string
+    venue:      string | null
+    note:       string | null
+    color:      string
+    visibility: BlockVisibility
+    visibleTo:  string[]
   }) => Promise<void>
   onCancel: () => void
+  friends:  Friend[]
 }
 
-export default function EditBlockForm({ block, onSave, onCancel }: EditBlockFormProps) {
+export default function EditBlockForm({ block, onSave, onCancel, friends }: EditBlockFormProps) {
+  const { nightOwl, setNightOwl } = useTheme()
 
   const toInput = (t: string) => `${t.slice(0, 2)}:${t.slice(2)}`
   const toStore = (t: string) => t.replace(':', '')
 
-  const [day,       setDay]       = useState<Day>(block.day)
-  const [startTime, setStartTime] = useState(toInput(block.startTime))
-  const [endTime,   setEndTime]   = useState(toInput(block.endTime))
-  const [venue,     setVenue]     = useState(block.venue ?? '')
-  const [color,     setColor]     = useState(block.color)
-  const [saving,    setSaving]    = useState(false)
-  const [err,       setErr]       = useState('')
+  const [day,        setDay]        = useState<Day>(block.day)
+  const [startTime,  setStartTime]  = useState(toInput(block.startTime))
+  const [endTime,    setEndTime]    = useState(toInput(block.endTime))
+  const [venue,      setVenue]      = useState(block.venue ?? '')
+  const [note,       setNote]       = useState(block.note ?? '')
+  const [color,      setColor]      = useState(block.color)
+  const [visibility, setVisibility] = useState<BlockVisibility>(block.visibility)
+  const [visibleTo,  setVisibleTo]  = useState<string[]>(block.visibleTo ?? [])
+  const [saving,     setSaving]     = useState(false)
+  const [err,        setErr]        = useState('')
+  const [nightPrompt, setNightPrompt] = useState(false)
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (toStore(startTime) >= toStore(endTime)) {
-      setErr('End time must be after start time.')
-      return
-    }
+  async function persist() {
     setSaving(true)
     setErr('')
+    setNightPrompt(false)
     try {
       await onSave({
         day,
         startTime: toStore(startTime),
         endTime:   toStore(endTime),
         venue:     venue.trim() || null,
+        note:      note.trim() || null,
         color,
+        visibility,
+        visibleTo,
       })
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Failed to save.')
       setSaving(false)
     }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setNightPrompt(false)
+
+    const s = toStore(startTime)
+    const en = toStore(endTime)
+    const error = validateBlockTimes(s, en, nightOwl)
+    if (error) {
+      if (!nightOwl && validateBlockTimes(s, en, true) === null) {
+        setErr('')
+        setNightPrompt(true)
+        return
+      }
+      setErr(error)
+      return
+    }
+
+    await persist()
+  }
+
+  async function enableNightOwlAndSave() {
+    setNightOwl(true)
+    await persist()
   }
 
   return (
@@ -111,7 +147,17 @@ export default function EditBlockForm({ block, onSave, onCancel }: EditBlockForm
         />
       </div>
 
-      
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Note (optional)</label>
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="e.g. Quiz this week, 19 Jan"
+          rows={2}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500"
+        />
+      </div>
+
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Colour</label>
         <div className="flex gap-2 flex-wrap">
@@ -130,7 +176,31 @@ export default function EditBlockForm({ block, onSave, onCancel }: EditBlockForm
         </div>
       </div>
 
+      <BlockVisibilitySelector
+        visibility={visibility}
+        visibleTo={visibleTo}
+        friends={friends}
+        onChange={(v, list) => { setVisibility(v); setVisibleTo(list) }}
+      />
+
       {err && <p className="text-sm text-red-600">{err}</p>}
+
+      {nightPrompt && (
+        <div className="bg-violet-50 border border-violet-200 rounded-lg px-4 py-3 space-y-2">
+          <p className="text-sm text-violet-900">
+            🦉 This block runs past 10:00 PM. The Night Owl calendar (8:00 AM – 2:00 AM) is needed
+            for late-night blocks. Enable it and save?
+          </p>
+          <div className="flex gap-2">
+            <Button type="button" size="sm" loading={saving} onClick={enableNightOwlAndSave}>
+              Enable Night Owl &amp; save
+            </Button>
+            <Button type="button" size="sm" variant="secondary" onClick={() => setNightPrompt(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-2 pt-1">
         <Button type="submit" loading={saving} className="flex-1">Save changes</Button>

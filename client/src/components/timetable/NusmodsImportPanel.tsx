@@ -3,11 +3,13 @@ import { useAuth } from '@clerk/clerk-react'
 import { api } from '@/lib/api'
 import Button from '@/components/ui/Button'
 import ClassSlotSelector from './ClassSlotSelector'
+import type { ImportResult, FailedImport } from '@/types'
 
 type Tab = 'url' | 'search'
 
 interface NusmodsImportPanelProps {
   onImported: () => void
+  onFailed: (failed: FailedImport[]) => void
 }
 
 interface ModuleInfo {
@@ -19,7 +21,7 @@ interface ModuleInfo {
   }>>
 }
 
-export default function NusmodsImportPanel({ onImported }: NusmodsImportPanelProps) {
+export default function NusmodsImportPanel({ onImported, onFailed }: NusmodsImportPanelProps) {
   const { getToken } = useAuth()
   const [tab, setTab] = useState<Tab>('url')
 
@@ -41,9 +43,14 @@ export default function NusmodsImportPanel({ onImported }: NusmodsImportPanelPro
     setUrlError('')
     try {
       const token = await getToken()
-      await api.post('/api/timetable/import', { shareUrl: shareUrl.trim() }, token ?? undefined)
+      const result = await api.post<ImportResult>(
+        '/api/timetable/import',
+        { shareUrl: shareUrl.trim() },
+        token ?? undefined
+      )
       setShareUrl('')
       onImported()
+      if (result.failed.length > 0) onFailed(result.failed)
     } catch (e) {
       setUrlError(e instanceof Error ? e.message : 'Import failed.')
     } finally {
@@ -80,17 +87,23 @@ export default function NusmodsImportPanel({ onImported }: NusmodsImportPanelPro
     const params = Object.entries(selected)
       .map(([lt, cn]) => `${lt}:${cn}`)
       .join(',')
-    const fakeUrl = `https:
+    const fakeUrl = `https://nusmods.com/timetable/sem-${moduleInfo.semester}/share?${moduleInfo.moduleCode}=${params}`
 
     setSaveLoad(true)
     setSearchError('')
+    setWarning('')
     try {
       const token = await getToken()
-      await api.post('/api/timetable/import', { shareUrl: fakeUrl }, token ?? undefined)
+      const result = await api.post<ImportResult>(
+        '/api/timetable/import',
+        { shareUrl: fakeUrl },
+        token ?? undefined
+      )
       setModuleCode('')
       setModuleInfo(null)
       setSelected({})
       onImported()
+      if (result.failed.length > 0) onFailed(result.failed)
     } catch (e) {
       setSearchError(e instanceof Error ? e.message : 'Failed to add module.')
     } finally {
@@ -116,7 +129,6 @@ export default function NusmodsImportPanel({ onImported }: NusmodsImportPanelPro
         ))}
       </div>
 
-      
       {tab === 'url' && (
         <div className="space-y-3">
           <p className="text-sm text-gray-500">

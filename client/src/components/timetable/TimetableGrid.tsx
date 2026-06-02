@@ -5,33 +5,47 @@ import TimetableBlockCell from './TimetableBlockCell'
 const DAYS: Day[]     = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 const DAY_SHORT       = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
 const START_HOUR      = 8
-const END_HOUR        = 22
-const TOTAL_MINUTES   = (END_HOUR - START_HOUR) * 60
+const DAY_END_HOUR    = 22
+const NIGHT_END_HOUR  = 26
 const START_MINUTES   = START_HOUR * 60
-const HOUR_LABELS     = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i)
-
-const GRID_HEIGHT_PX  = 840
+const PX_PER_HOUR     = 60
 
 interface TimetableGridProps {
-  blocks:   TimetableBlock[]
-  onDelete: (id: string) => void
-  onEdit:   (block: TimetableBlock) => void
+  blocks:    TimetableBlock[]
+  onDelete?: (id: string) => void
+  onEdit?:   (block: TimetableBlock) => void
+  readOnly?: boolean
+  nightOwl?: boolean
 }
 
-function topAndHeight(block: TimetableBlock) {
-  const start  = timeToMinutes(block.startTime)
-  const end    = timeToMinutes(block.endTime)
-  const top    = ((start - START_MINUTES) / TOTAL_MINUTES) * 100
-  const height = ((end  - start)          / TOTAL_MINUTES) * 100
-  return { topPercent: top, heightPercent: height }
+function hourLabel(h: number) {
+  const hh = ((h % 24) + 24) % 24
+  const period = hh < 12 ? 'am' : 'pm'
+  const display = hh === 0 ? 12 : hh > 12 ? hh - 12 : hh
+  return `${display}${period}`
 }
 
-export default function TimetableGrid({ blocks, onDelete, onEdit }: TimetableGridProps) {
+export default function TimetableGrid({ blocks, onDelete, onEdit, readOnly = false, nightOwl = false }: TimetableGridProps) {
   const LABEL_W = 'w-12'
+
+  const endHour      = nightOwl ? NIGHT_END_HOUR : DAY_END_HOUR
+  const totalMinutes = (endHour - START_HOUR) * 60
+  const gridHeight   = (endHour - START_HOUR) * PX_PER_HOUR
+  const hourLabels   = Array.from({ length: endHour - START_HOUR + 1 }, (_, i) => START_HOUR + i)
+
+  const adjust = (m: number) => (nightOwl && m < START_MINUTES ? m + 1440 : m)
+
+  function topAndHeight(block: TimetableBlock) {
+    const start  = adjust(timeToMinutes(block.startTime))
+    const end    = adjust(timeToMinutes(block.endTime))
+    const top    = ((start - START_MINUTES) / totalMinutes) * 100
+    const height = ((end - start) / totalMinutes) * 100
+    return { topPercent: top, heightPercent: height }
+  }
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      
+
       <div className="flex border-b border-gray-200">
         <div className={`${LABEL_W} shrink-0`} />
         {DAYS.map((day, i) => (
@@ -44,37 +58,33 @@ export default function TimetableGrid({ blocks, onDelete, onEdit }: TimetableGri
         ))}
       </div>
 
-      
-      <div className="flex" style={{ height: `${GRID_HEIGHT_PX}px` }}>
-        
+      <div className="flex" style={{ height: `${gridHeight}px` }}>
+
         <div className={`${LABEL_W} shrink-0 relative`}>
-          {HOUR_LABELS.map((h) => (
+          {hourLabels.map((h) => (
             <div
               key={h}
               className="absolute w-full pr-2 text-right text-xs text-gray-400 leading-none"
-              style={{ top: `${((h - START_HOUR) / (END_HOUR - START_HOUR)) * 100}%` }}
+              style={{ top: `${((h - START_HOUR) / (endHour - START_HOUR)) * 100}%` }}
             >
-              {h === 12 ? '12' : h > 12 ? h - 12 : h}
-              {h === 12 ? 'pm' : h >= 12 ? '' : 'am'}
+              {hourLabel(h)}
             </div>
           ))}
         </div>
 
-        
         {DAYS.map((day) => {
           const dayBlocks = blocks.filter((b) => b.day === day)
           return (
             <div key={day} className="flex-1 relative border-l border-gray-100">
-              
-              {HOUR_LABELS.map((h) => (
+
+              {hourLabels.map((h) => (
                 <div
                   key={h}
                   className="absolute w-full border-t border-gray-100"
-                  style={{ top: `${((h - START_HOUR) / (END_HOUR - START_HOUR)) * 100}%` }}
+                  style={{ top: `${((h - START_HOUR) / (endHour - START_HOUR)) * 100}%` }}
                 />
               ))}
 
-              
               {dayBlocks.map((block) => {
                 const { topPercent, heightPercent } = topAndHeight(block)
                 return (
@@ -85,6 +95,7 @@ export default function TimetableGrid({ blocks, onDelete, onEdit }: TimetableGri
                     heightPercent={heightPercent}
                     onDelete={onDelete}
                     onEdit={onEdit}
+                    readOnly={readOnly}
                   />
                 )
               })}
