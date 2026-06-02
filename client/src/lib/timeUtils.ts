@@ -11,3 +11,30 @@ export function formatTimeDisplay(time: string): string {
   const hour   = h > 12 ? h - 12 : h === 0 ? 12 : h
   return `${hour}:${m} ${period}`
 }
+
+const DAY_START_MIN  = 8 * 60
+const DAY_END_MIN    = 22 * 60
+const NIGHT_END_MIN  = 26 * 60
+
+function effectiveMinutes(min: number, nightOwl: boolean): number {
+  return nightOwl && min < DAY_START_MIN ? min + 1440 : min
+}
+
+export function validateBlockTimes(start: string, end: string, nightOwl: boolean): string | null {
+  const s = effectiveMinutes(timeToMinutes(start), nightOwl)
+  const e = effectiveMinutes(timeToMinutes(end), nightOwl)
+
+  if (s < DAY_START_MIN) {
+    return 'Start time must be from 8:00 AM onwards.'
+  }
+  if (e <= s) {
+    return 'End time must be after the start time.'
+  }
+  if (!nightOwl && e > DAY_END_MIN) {
+    return 'Without Night Owl mode, time slots must be between 8:00 AM and 10:00 PM.'
+  }
+  if (nightOwl && e > NIGHT_END_MIN) {
+    return 'In Night Owl mode, time slots must be between 8:00 AM and 2:00 AM.'
+  }
+  return null
+}

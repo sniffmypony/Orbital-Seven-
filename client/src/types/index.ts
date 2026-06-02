@@ -11,6 +11,8 @@ export type Day =
 
 export type TimetableSource = 'nusmods' | 'custom'
 
+export type BlockVisibility = 'private' | 'friends' | 'only' | 'except'
+
 export type FriendshipStatus = 'pending' | 'accepted' | 'rejected'
 
 export type GroupType = 'study' | 'project' | 'social'
@@ -38,8 +40,11 @@ export interface TimetableBlock {
   endTime: string
   weeks: number[]
   venue: string | null
+  note: string | null
   source: TimetableSource
   color: string
+  visibility: BlockVisibility
+  visibleTo: string[]
   createdAt: string
 }
 
@@ -49,6 +54,42 @@ export interface Friendship {
   addresseeId: string
   status: FriendshipStatus
   createdAt: string
+}
+
+export type FriendRelationship = 'none' | 'friends' | 'incoming' | 'outgoing' | 'blocked'
+
+export interface FriendUser {
+  id: string
+  displayName: string
+  email: string
+  avatarUrl: string | null
+}
+
+export interface Friend {
+  friendshipId: string
+  status: FriendshipStatus
+  user: FriendUser
+}
+
+export interface FriendRequest {
+  friendshipId: string
+  createdAt: string
+  user: FriendUser
+}
+
+export interface BlockedUser {
+  blockId: string
+  createdAt: string
+  user: FriendUser
+}
+
+export interface UserSearchResult extends FriendUser {
+  relationship: FriendRelationship
+}
+
+export interface FriendTimetable {
+  user: FriendUser
+  blocks: TimetableBlock[]
 }
 
 export interface Group {
@@ -94,6 +135,32 @@ export interface PrivacySettings {
   timetableVisibility: Visibility
   freeTimeVisibility: Visibility
   feedVisibility: Visibility
+}
+
+export interface Profile {
+  id: string
+  email: string
+  displayName: string
+  avatarUrl: string | null
+  bio: string | null
+  major: string | null
+  defaultBlockVisibility: 'private' | 'friends'
+}
+
+export interface FailedImport {
+  moduleCode: string
+  lessonType: string
+  lessonLabel: string
+  classNo: string
+  reason: 'not_found' | 'no_match'
+  color: string
+}
+
+export interface ImportResult {
+  created: TimetableBlock[]
+  imported: number
+  failed: FailedImport[]
+  academicYear: string
 }
 
 export interface ApiError {

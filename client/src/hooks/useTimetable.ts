@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '@clerk/clerk-react'
 import { api } from '@/lib/api'
-import type { TimetableBlock } from '@/types'
+import type { TimetableBlock, BlockVisibility } from '@/types'
+
+export type NewBlock =
+  Omit<TimetableBlock, 'id' | 'userId' | 'createdAt' | 'visibility' | 'visibleTo' | 'note'>
+  & { visibility?: BlockVisibility; visibleTo?: string[]; note?: string | null }
 
 export function useTimetable() {
   const { getToken } = useAuth()
@@ -30,7 +34,7 @@ export function useTimetable() {
     await fetchBlocks()
   }, [getToken, fetchBlocks])
 
-  const addBlock = useCallback(async (block: Omit<TimetableBlock, 'id' | 'userId' | 'createdAt'>) => {
+  const addBlock = useCallback(async (block: NewBlock) => {
     const token = await getToken()
     await api.post('/api/timetable', block, token ?? undefined)
     await fetchBlocks()
@@ -50,7 +54,7 @@ export function useTimetable() {
 
   const editBlock = useCallback(async (
     id: string,
-    updates: { day?: string; startTime?: string; endTime?: string; venue?: string | null; color?: string; title?: string }
+    updates: { day?: string; startTime?: string; endTime?: string; venue?: string | null; note?: string | null; color?: string; title?: string; visibility?: string; visibleTo?: string[] }
   ) => {
     const token = await getToken()
     await api.put(`/api/timetable/${id}`, updates, token ?? undefined)
