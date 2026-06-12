@@ -13,6 +13,8 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', href: '/' },
   { label: 'Timetable', href: '/timetable' },
   { label: 'Friends',   href: '/friends' },
+  { label: 'Free Time', href: '/freetime' },
+  { label: 'Groups',    href: '/groups' },
   { label: 'Profile',   href: '/profile' },
 ]
 

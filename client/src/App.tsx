@@ -6,6 +6,9 @@ import DashboardPage from '@/pages/DashboardPage'
 import TimetablePage from '@/pages/TimetablePage'
 import FriendsPage from '@/pages/FriendsPage'
 import FriendTimetablePage from '@/pages/FriendTimetablePage'
+import FreeTimePage from '@/pages/FreeTimePage'
+import GroupsPage from '@/pages/GroupsPage'
+import GroupChatPage from '@/pages/GroupChatPage'
 import ProfilePage from '@/pages/ProfilePage'
 
 export default function App() {
@@ -19,6 +22,9 @@ export default function App() {
               <Route path="/timetable" element={<TimetablePage />} />
               <Route path="/friends" element={<FriendsPage />} />
               <Route path="/friends/:friendId/timetable" element={<FriendTimetablePage />} />
+              <Route path="/freetime" element={<FreeTimePage />} />
+              <Route path="/groups" element={<GroupsPage />} />
+              <Route path="/groups/:groupId" element={<GroupChatPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

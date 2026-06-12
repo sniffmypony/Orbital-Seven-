@@ -5,10 +5,10 @@ import { getAcademicLabel, formatFullDate } from '@/lib/academicCalendar'
 const CARDS = [
   { title: 'Timetable', desc: 'View and manage your weekly schedule', href: '/timetable', ready: true },
   { title: 'Friends',   desc: 'Connect with classmates',              href: '/friends',   ready: true },
-  { title: 'Free Time', desc: 'Find shared free slots',               href: null,         ready: false },
-  { title: 'Events',    desc: 'Plan and vote on meetups',             href: null,         ready: false },
+  { title: 'Free Time', desc: 'Find shared free slots',               href: '/freetime',  ready: true },
+  { title: 'Groups',    desc: 'Chat, polls and group events',         href: '/groups',    ready: true },
+  { title: 'Profile',   desc: 'Edit your profile and defaults',       href: '/profile',   ready: true },
   { title: 'Feed',      desc: 'See what friends are up to',           href: null,         ready: false },
-  { title: 'Settings',  desc: 'Control your privacy',                 href: null,         ready: false },
 ]
 
 export default function DashboardPage() {
