@@ -107,6 +107,104 @@ export interface FreeSlot {
   endTime: string
 }
 
+export interface FreeTimeParticipant {
+  id: string
+  displayName: string
+  avatarUrl: string | null
+  isSelf: boolean
+}
+
+export interface FreeTimeWindow {
+  start: string
+  end: string
+}
+
+export interface FreeTimeResponse {
+  participants: FreeTimeParticipant[]
+  days: Record<string, FreeTimeWindow[]>
+}
+
+export interface GroupUser {
+  id: string
+  displayName: string
+  avatarUrl: string | null
+}
+
+export interface GroupSummary {
+  id: string
+  name: string
+  avatarUrl: string | null
+  memberCount: number
+  muted: boolean
+  unread: number
+  lastMessage: { kind: string; text: string | null; createdAt: string } | null
+}
+
+export type GroupFriendship = 'self' | 'friends' | 'pending' | 'none'
+
+export interface GroupMember {
+  user: GroupUser
+  role: string
+  isSelf: boolean
+  friendship: GroupFriendship
+}
+
+export interface GroupDetail {
+  group: { id: string; name: string; avatarUrl: string | null }
+  members: GroupMember[]
+  myRole: string
+  muted: boolean
+}
+
+export interface PollOption {
+  choice: string
+  voters: string[]
+}
+
+export interface MessagePoll {
+  id: string
+  question: string
+  options: PollOption[]
+  myVote: string | null
+}
+
+export interface MessageEvent {
+  id: string
+  title: string
+  day: string
+  startTime: string
+  endTime: string
+  venue: string | null
+}
+
+export interface ChatMessage {
+  id: string
+  kind: 'text' | 'image' | 'video' | 'poll' | 'event'
+  text: string | null
+  mediaUrl: string | null
+  createdAt: string
+  sender: GroupUser
+  readBy: string[]
+  mine: boolean
+  poll?: MessagePoll
+  event?: MessageEvent
+}
+
+export interface GroupAvailabilitySlot {
+  day: string
+  start: string
+  end: string
+  freeCount: number
+  totalCount: number
+  busyNames: string[]
+}
+
+export interface GroupAvailability {
+  totalCount: number
+  everyoneFree: GroupAvailabilitySlot[]
+  bestSlots: GroupAvailabilitySlot[]
+}
+
 export interface Event {
   id: string
   title: string
