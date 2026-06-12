@@ -18,7 +18,7 @@ app.use(
   })
 )
 
-app.use(express.json())
+app.use(express.json({ limit: '25mb' }))
 
 app.use(clerkAuth)
 
@@ -30,10 +30,14 @@ const timetableRouter = require('./routes/timetable').default
 const nusmodsRouter   = require('./routes/nusmods').default
 const friendsRouter   = require('./routes/friends').default
 const profileRouter   = require('./routes/profile').default
+const freetimeRouter  = require('./routes/freetime').default
+const groupsRouter    = require('./routes/groups').default
 app.use('/api/timetable', timetableRouter)
 app.use('/api/nusmods',   nusmodsRouter)
 app.use('/api/friends',   friendsRouter)
 app.use('/api/profile',   profileRouter)
+app.use('/api/freetime',  freetimeRouter)
+app.use('/api/groups',    groupsRouter)
 
 app.use(errorHandler)
 

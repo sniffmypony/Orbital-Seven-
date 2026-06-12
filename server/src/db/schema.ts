@@ -85,6 +85,7 @@ export const groups = pgTable('groups', {
   name:        text('name').notNull(),
   description: text('description'),
   type:        text('type').notNull(),
+  avatarUrl:   text('avatar_url'),
   createdById: uuid('created_by_id').notNull().references(() => users.id),
   createdAt:   timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })
@@ -94,10 +95,60 @@ export const groupMembers = pgTable('group_members', {
   groupId:  uuid('group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
   userId:   uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   role:     text('role').notNull().default('member'),
+  muted:    boolean('muted').notNull().default(false),
   joinedAt: timestamp('joined_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({
   uniq: unique().on(t.groupId, t.userId),
 }))
+
+export const messages = pgTable('messages', {
+  id:        uuid('id').primaryKey().defaultRandom(),
+  groupId:   uuid('group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
+  senderId:  uuid('sender_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  kind:      text('kind').notNull().default('text'),
+  text:      text('text'),
+  mediaUrl:  text('media_url'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+export const messageReads = pgTable('message_reads', {
+  id:        uuid('id').primaryKey().defaultRandom(),
+  messageId: uuid('message_id').notNull().references(() => messages.id, { onDelete: 'cascade' }),
+  userId:    uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  readAt:    timestamp('read_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => ({
+  uniq: unique().on(t.messageId, t.userId),
+}))
+
+export const polls = pgTable('polls', {
+  id:        uuid('id').primaryKey().defaultRandom(),
+  messageId: uuid('message_id').notNull().references(() => messages.id, { onDelete: 'cascade' }).unique(),
+  question:  text('question').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+export const pollVotes = pgTable('poll_votes', {
+  id:        uuid('id').primaryKey().defaultRandom(),
+  pollId:    uuid('poll_id').notNull().references(() => polls.id, { onDelete: 'cascade' }),
+  userId:    uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  choice:    text('choice').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => ({
+  uniq: unique().on(t.pollId, t.userId),
+}))
+
+export const groupEvents = pgTable('group_events', {
+  id:          uuid('id').primaryKey().defaultRandom(),
+  messageId:   uuid('message_id').notNull().references(() => messages.id, { onDelete: 'cascade' }).unique(),
+  groupId:     uuid('group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
+  createdById: uuid('created_by_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  title:       text('title').notNull(),
+  day:         text('day').notNull(),
+  startTime:   text('start_time').notNull(),
+  endTime:     text('end_time').notNull(),
+  venue:       text('venue'),
+  createdAt:   timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+})
 
 export const events = pgTable('events', {
   id:          uuid('id').primaryKey().defaultRandom(),

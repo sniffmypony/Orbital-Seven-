@@ -36,6 +36,13 @@
       "when": 1780408711896,
       "tag": "0004_block_note",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1781012321719,
+      "tag": "0005_group_chats",
+      "breakpoints": true
     }
   ]
 }
