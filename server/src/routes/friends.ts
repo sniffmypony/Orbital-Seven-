@@ -1,10 +1,11 @@
 import { Router } from 'express'
 import { and, eq, or, ne, ilike, inArray } from 'drizzle-orm'
 import { db } from '../db'
-import { friendships, users, timetableBlocks, timetableBlockVisibility, userBlocks } from '../db/schema'
+import { friendships, users, userBlocks } from '../db/schema'
 import { requireAuth, getClerkUserId } from '../middleware/auth'
 import { getOrCreateDbUser } from '../services/userService'
 import { getFriendshipBetween, areFriends, getBlockedIds } from '../services/friendService'
+import { getVisibleBlocks } from '../services/timetableService'
 
 const router = Router()
 
@@ -152,42 +153,7 @@ router.get('/:friendId/timetable', requireAuth, async (req, res, next) => {
       return
     }
 
-    const allBlocks = await db
-      .select()
-      .from(timetableBlocks)
-      .where(eq(timetableBlocks.userId, friendId))
-
-    const overrideBlockIds = new Set<string>()
-    const overrideCandidates = allBlocks
-      .filter((b) => b.visibility === 'only' || b.visibility === 'except')
-      .map((b) => b.id)
-
-    if (overrideCandidates.length > 0) {
-      const overrides = await db
-        .select({ blockId: timetableBlockVisibility.blockId })
-        .from(timetableBlockVisibility)
-        .where(
-          and(
-            inArray(timetableBlockVisibility.blockId, overrideCandidates),
-            eq(timetableBlockVisibility.userId, me.id)
-          )
-        )
-      for (const o of overrides) overrideBlockIds.add(o.blockId)
-    }
-
-    const visibleBlocks = allBlocks.filter((b) => {
-      switch (b.visibility) {
-        case 'public':
-        case 'friends':
-          return true
-        case 'only':
-          return overrideBlockIds.has(b.id)
-        case 'except':
-          return !overrideBlockIds.has(b.id)
-        default:
-          return false
-      }
-    })
+    const visibleBlocks = await getVisibleBlocks(friendId, me.id)
 
     res.json({ user: publicUser(friend), blocks: visibleBlocks })
   } catch (err) {
