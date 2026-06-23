@@ -2,6 +2,7 @@ import { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { UserButton } from '@clerk/clerk-react'
 import { useTheme } from '@/lib/theme'
+import { useNotifications } from '@/hooks/useNotifications'
 import SceneryBackground from './SceneryBackground'
 
 interface NavItem {
@@ -25,9 +26,13 @@ interface AppShellProps {
 export default function AppShell({ children }: AppShellProps) {
   const { pathname } = useLocation()
   const { nightOwl } = useTheme()
+  const notif = useNotifications()
 
   const isActive = (href: string) =>
     href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`)
+
+  const badgeFor = (href: string) =>
+    href === '/friends' ? notif.friendRequests : href === '/groups' ? notif.groupsUnread : 0
 
   const headerClass = nightOwl
     ? 'bg-slate-900/90 backdrop-blur border-t-4 border-violet-500 shadow-lg'
@@ -52,7 +57,7 @@ export default function AppShell({ children }: AppShellProps) {
                   key={item.href}
                   to={item.href}
                   className={[
-                    'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150',
+                    'relative px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150',
                     isActive(item.href)
                       ? nightOwl
                         ? 'bg-violet-600 text-white shadow-sm'
@@ -63,6 +68,11 @@ export default function AppShell({ children }: AppShellProps) {
                   ].join(' ')}
                 >
                   {item.label}
+                  {badgeFor(item.href) > 0 && (
+                    <span className="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold">
+                      {badgeFor(item.href)}
+                    </span>
+                  )}
                 </Link>
               ))}
             </nav>

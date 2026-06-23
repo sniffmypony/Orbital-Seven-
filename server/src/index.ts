@@ -32,12 +32,14 @@ const friendsRouter   = require('./routes/friends').default
 const profileRouter   = require('./routes/profile').default
 const freetimeRouter  = require('./routes/freetime').default
 const groupsRouter    = require('./routes/groups').default
+const notificationsRouter = require('./routes/notifications').default
 app.use('/api/timetable', timetableRouter)
 app.use('/api/nusmods',   nusmodsRouter)
 app.use('/api/friends',   friendsRouter)
 app.use('/api/profile',   profileRouter)
 app.use('/api/freetime',  freetimeRouter)
 app.use('/api/groups',    groupsRouter)
+app.use('/api/notifications', notificationsRouter)
 
 app.use(errorHandler)
 

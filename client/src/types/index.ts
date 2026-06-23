@@ -168,6 +168,11 @@ export interface MessagePoll {
   myVote: string | null
 }
 
+export interface NotificationCounts {
+  friendRequests: number
+  groupsUnread: number
+}
+
 export interface MessageEvent {
   id: string
   title: string
