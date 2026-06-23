@@ -91,7 +91,6 @@ export default function NusmodsImportPanel({ onImported, onFailed }: NusmodsImpo
 
     setSaveLoad(true)
     setSearchError('')
-    setWarning('')
     try {
       const token = await getToken()
       const result = await api.post<ImportResult>(
