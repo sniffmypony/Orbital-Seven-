@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { and, eq, ne, inArray, desc, isNull, count } from 'drizzle-orm'
 import { db } from '../db'
 import {
-  groups, groupMembers, messages, messageReads, polls, pollVotes, groupEvents,
+  groups, groupMembers, messages, messageReads, polls, pollOptions, pollVotes, groupEvents,
   users, timetableBlocks,
 } from '../db/schema'
 import { requireAuth, getClerkUserId } from '../middleware/auth'
@@ -13,7 +13,7 @@ import { computeGroupAvailability } from '../services/groupAvailabilityService'
 
 const router = Router()
 
-const POLL_CHOICES = ['coming', 'maybe', 'cant']
+const DEFAULT_POLL_OPTIONS = ["😄 I'm coming!", '🤔 Maybe', '😢 Sorry, I have other plans']
 
 function publicUser(u: { id: string; displayName: string; avatarUrl: string | null }) {
   return { id: u.id, displayName: u.displayName, avatarUrl: u.avatarUrl }
@@ -151,7 +151,13 @@ router.get('/:id', requireAuth, async (req, res, next) => {
         if (f && f.status === 'accepted') friendship = 'friends'
         else if (f && f.status === 'pending') friendship = 'pending'
       }
-      members.push({ user: publicUser(u), role: m.role, isSelf: m.userId === me.id, friendship })
+      members.push({
+        user: publicUser(u),
+        role: m.role,
+        isSelf: m.userId === me.id,
+        isOwner: m.userId === group.createdById,
+        friendship,
+      })
     }
 
     res.json({
@@ -159,6 +165,9 @@ router.get('/:id', requireAuth, async (req, res, next) => {
       members,
       myRole: membership.role,
       muted: membership.muted,
+      ownerId: group.createdById,
+      isOwner: group.createdById === me.id,
+      allowMemberAdd: group.allowMemberAdd,
     })
   } catch (err) {
     next(err)
@@ -173,13 +182,62 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
       res.status(403).json({ message: 'Only an admin can edit this group.' })
       return
     }
-    const { name, avatarUrl } = req.body as { name?: string; avatarUrl?: string }
+    const { name, avatarUrl, allowMemberAdd } = req.body as { name?: string; avatarUrl?: string; allowMemberAdd?: boolean }
     const set: Record<string, unknown> = {}
     if (typeof name === 'string' && name.trim()) set.name = name.trim()
     if (typeof avatarUrl === 'string') set.avatarUrl = avatarUrl.trim() || null
+    if (typeof allowMemberAdd === 'boolean') set.allowMemberAdd = allowMemberAdd
 
     const [updated] = await db.update(groups).set(set).where(eq(groups.id, req.params.id)).returning()
-    res.json({ id: updated.id, name: updated.name, avatarUrl: updated.avatarUrl })
+    res.json({ id: updated.id, name: updated.name, avatarUrl: updated.avatarUrl, allowMemberAdd: updated.allowMemberAdd })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.delete('/:id', requireAuth, async (req, res, next) => {
+  try {
+    const me = await getOrCreateDbUser(getClerkUserId(req))
+    const [group] = await db.select().from(groups).where(eq(groups.id, req.params.id)).limit(1)
+    if (!group) {
+      res.status(204).send()
+      return
+    }
+    if (group.createdById !== me.id) {
+      res.status(403).json({ message: 'Only the group owner can delete the group.' })
+      return
+    }
+    await db.delete(groups).where(eq(groups.id, req.params.id))
+    res.status(204).send()
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.post('/:id/transfer-owner', requireAuth, async (req, res, next) => {
+  try {
+    const me = await getOrCreateDbUser(getClerkUserId(req))
+    const [group] = await db.select().from(groups).where(eq(groups.id, req.params.id)).limit(1)
+    if (!group || group.createdById !== me.id) {
+      res.status(403).json({ message: 'Only the current owner can transfer ownership.' })
+      return
+    }
+    const { userId } = req.body as { userId: string }
+    if (!userId || userId === me.id) {
+      res.status(400).json({ message: 'Choose a different member to transfer ownership to.' })
+      return
+    }
+    const target = await getMembership(req.params.id, userId)
+    if (!target) {
+      res.status(400).json({ message: 'That user is not a member of this group.' })
+      return
+    }
+    await db.update(groups).set({ createdById: userId }).where(eq(groups.id, req.params.id))
+    await db.update(groupMembers).set({ role: 'admin' })
+      .where(and(eq(groupMembers.groupId, req.params.id), eq(groupMembers.userId, userId)))
+    await db.update(groupMembers).set({ role: 'admin' })
+      .where(and(eq(groupMembers.groupId, req.params.id), eq(groupMembers.userId, me.id)))
+    res.json({ ok: true })
   } catch (err) {
     next(err)
   }
@@ -189,8 +247,14 @@ router.post('/:id/members', requireAuth, async (req, res, next) => {
   try {
     const me = await getOrCreateDbUser(getClerkUserId(req))
     const membership = await getMembership(req.params.id, me.id)
-    if (!membership || membership.role !== 'admin') {
-      res.status(403).json({ message: 'Only an admin can add members.' })
+    if (!membership) {
+      res.status(403).json({ message: 'You are not a member of this group.' })
+      return
+    }
+    const [group] = await db.select().from(groups).where(eq(groups.id, req.params.id)).limit(1)
+    const canAdd = membership.role === 'admin' || group.allowMemberAdd
+    if (!canAdd) {
+      res.status(403).json({ message: 'Only admins can add members to this group.' })
       return
     }
     const { userId } = req.body as { userId: string }
@@ -208,6 +272,33 @@ router.post('/:id/members', requireAuth, async (req, res, next) => {
   }
 })
 
+router.patch('/:id/members/:userId/role', requireAuth, async (req, res, next) => {
+  try {
+    const me = await getOrCreateDbUser(getClerkUserId(req))
+    const [group] = await db.select().from(groups).where(eq(groups.id, req.params.id)).limit(1)
+    if (!group || group.createdById !== me.id) {
+      res.status(403).json({ message: 'Only the group owner can change member roles.' })
+      return
+    }
+    const { role } = req.body as { role: 'admin' | 'member' }
+    if (role !== 'admin' && role !== 'member') {
+      res.status(400).json({ message: 'role must be admin or member.' })
+      return
+    }
+    if (req.params.userId === group.createdById) {
+      res.status(400).json({ message: 'The owner role cannot be changed.' })
+      return
+    }
+    await db
+      .update(groupMembers)
+      .set({ role })
+      .where(and(eq(groupMembers.groupId, req.params.id), eq(groupMembers.userId, req.params.userId)))
+    res.json({ ok: true })
+  } catch (err) {
+    next(err)
+  }
+})
+
 router.delete('/:id/members/:userId', requireAuth, async (req, res, next) => {
   try {
     const me = await getOrCreateDbUser(getClerkUserId(req))
@@ -216,7 +307,12 @@ router.delete('/:id/members/:userId', requireAuth, async (req, res, next) => {
       res.status(204).send()
       return
     }
+    const [group] = await db.select().from(groups).where(eq(groups.id, req.params.id)).limit(1)
     const target = req.params.userId
+    if (target === group.createdById) {
+      res.status(400).json({ message: 'The group owner cannot be removed.' })
+      return
+    }
     if (target !== me.id && membership.role !== 'admin') {
       res.status(403).json({ message: 'Only an admin can remove other members.' })
       return
@@ -273,6 +369,7 @@ async function serializeMessages(groupId: string, meId: string) {
   const pollRows = await db.select().from(polls).where(inArray(polls.messageId, ids))
   const pollByMsg = new Map(pollRows.map((p) => [p.messageId, p]))
   const pollIds = pollRows.map((p) => p.id)
+  const optionRows = pollIds.length ? await db.select().from(pollOptions).where(inArray(pollOptions.pollId, pollIds)) : []
   const votes = pollIds.length ? await db.select().from(pollVotes).where(inArray(pollVotes.pollId, pollIds)) : []
   const voteUserIds = votes.map((v) => v.userId)
   const voteUsers = voteUserIds.length ? await db.select().from(users).where(inArray(users.id, voteUserIds)) : []
@@ -297,14 +394,19 @@ async function serializeMessages(groupId: string, meId: string) {
     const poll = pollByMsg.get(m.id)
     if (poll) {
       const pv = votes.filter((v) => v.pollId === poll.id)
+      const opts = optionRows
+        .filter((o) => o.pollId === poll.id)
+        .sort((a, b) => Number(b.isDefault) - Number(a.isDefault) || new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
       out.poll = {
         id: poll.id,
         question: poll.question,
-        options: POLL_CHOICES.map((choice) => ({
-          choice,
-          voters: pv.filter((v) => v.choice === choice).map((v) => voteUserMap.get(v.userId)?.displayName ?? 'Someone'),
+        options: opts.map((o) => ({
+          id: o.id,
+          label: o.label,
+          isDefault: o.isDefault,
+          voters: pv.filter((v) => v.optionId === o.id).map((v) => voteUserMap.get(v.userId)?.displayName ?? 'Someone'),
         })),
-        myVote: pv.find((v) => v.userId === meId)?.choice ?? null,
+        myVote: pv.find((v) => v.userId === meId)?.optionId ?? null,
       }
     }
 
@@ -372,6 +474,31 @@ router.post('/:id/messages', requireAuth, async (req, res, next) => {
   }
 })
 
+router.delete('/:id/messages/:messageId', requireAuth, async (req, res, next) => {
+  try {
+    const me = await getOrCreateDbUser(getClerkUserId(req))
+    const membership = await getMembership(req.params.id, me.id)
+    if (!membership) {
+      res.status(403).json({ message: 'You are not a member of this group.' })
+      return
+    }
+    const rows = await db.select().from(messages).where(eq(messages.id, req.params.messageId)).limit(1)
+    const msg = rows[0]
+    if (!msg || msg.groupId !== req.params.id) {
+      res.status(204).send()
+      return
+    }
+    if (msg.senderId !== me.id && membership.role !== 'admin') {
+      res.status(403).json({ message: 'You can only delete your own messages.' })
+      return
+    }
+    await db.delete(messages).where(eq(messages.id, msg.id))
+    res.status(204).send()
+  } catch (err) {
+    next(err)
+  }
+})
+
 router.post('/:id/read', requireAuth, async (req, res, next) => {
   try {
     const me = await getOrCreateDbUser(getClerkUserId(req))
@@ -412,7 +539,30 @@ router.post('/:id/polls', requireAuth, async (req, res, next) => {
       .insert(messages)
       .values({ groupId: req.params.id, senderId: me.id, kind: 'poll', text: question.trim() })
       .returning()
-    await db.insert(polls).values({ messageId: msg.id, question: question.trim() })
+    const [poll] = await db.insert(polls).values({ messageId: msg.id, question: question.trim() }).returning()
+    await db.insert(pollOptions).values(
+      DEFAULT_POLL_OPTIONS.map((label) => ({ pollId: poll.id, label, isDefault: true, createdById: me.id }))
+    )
+    res.status(201).json({ ok: true })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.post('/:id/polls/:pollId/options', requireAuth, async (req, res, next) => {
+  try {
+    const me = await getOrCreateDbUser(getClerkUserId(req))
+    const membership = await getMembership(req.params.id, me.id)
+    if (!membership) {
+      res.status(403).json({ message: 'You are not a member of this group.' })
+      return
+    }
+    const { label } = req.body as { label: string }
+    if (!label || !label.trim()) {
+      res.status(400).json({ message: 'An option label is required.' })
+      return
+    }
+    await db.insert(pollOptions).values({ pollId: req.params.pollId, label: label.trim(), isDefault: false, createdById: me.id })
     res.status(201).json({ ok: true })
   } catch (err) {
     next(err)
@@ -427,16 +577,36 @@ router.post('/:id/polls/:pollId/vote', requireAuth, async (req, res, next) => {
       res.status(403).json({ message: 'You are not a member of this group.' })
       return
     }
-    const { choice } = req.body as { choice: string }
-    if (!POLL_CHOICES.includes(choice)) {
-      res.status(400).json({ message: 'Invalid choice.' })
+    const { optionId } = req.body as { optionId: string }
+    if (!optionId) {
+      res.status(400).json({ message: 'optionId is required.' })
+      return
+    }
+    const opt = await db.select().from(pollOptions).where(eq(pollOptions.id, optionId)).limit(1)
+    if (opt.length === 0 || opt[0].pollId !== req.params.pollId) {
+      res.status(400).json({ message: 'Invalid option.' })
       return
     }
     await db
       .insert(pollVotes)
-      .values({ pollId: req.params.pollId, userId: me.id, choice })
-      .onConflictDoUpdate({ target: [pollVotes.pollId, pollVotes.userId], set: { choice } })
+      .values({ pollId: req.params.pollId, optionId, userId: me.id })
+      .onConflictDoUpdate({ target: [pollVotes.pollId, pollVotes.userId], set: { optionId } })
     res.json({ ok: true })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.delete('/:id/polls/:pollId/vote', requireAuth, async (req, res, next) => {
+  try {
+    const me = await getOrCreateDbUser(getClerkUserId(req))
+    const membership = await getMembership(req.params.id, me.id)
+    if (!membership) {
+      res.status(403).json({ message: 'You are not a member of this group.' })
+      return
+    }
+    await db.delete(pollVotes).where(and(eq(pollVotes.pollId, req.params.pollId), eq(pollVotes.userId, me.id)))
+    res.status(204).send()
   } catch (err) {
     next(err)
   }

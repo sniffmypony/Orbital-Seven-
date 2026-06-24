@@ -81,13 +81,14 @@ export const friendships = pgTable('friendships', {
 }))
 
 export const groups = pgTable('groups', {
-  id:          uuid('id').primaryKey().defaultRandom(),
-  name:        text('name').notNull(),
-  description: text('description'),
-  type:        text('type').notNull(),
-  avatarUrl:   text('avatar_url'),
-  createdById: uuid('created_by_id').notNull().references(() => users.id),
-  createdAt:   timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  id:             uuid('id').primaryKey().defaultRandom(),
+  name:           text('name').notNull(),
+  description:    text('description'),
+  type:           text('type').notNull(),
+  avatarUrl:      text('avatar_url'),
+  allowMemberAdd: boolean('allow_member_add').notNull().default(false),
+  createdById:    uuid('created_by_id').notNull().references(() => users.id),
+  createdAt:      timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })
 
 export const groupMembers = pgTable('group_members', {
@@ -127,11 +128,21 @@ export const polls = pgTable('polls', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })
 
+export const pollOptions = pgTable('poll_options', {
+  id:          uuid('id').primaryKey().defaultRandom(),
+  pollId:      uuid('poll_id').notNull().references(() => polls.id, { onDelete: 'cascade' }),
+  label:       text('label').notNull(),
+  isDefault:   boolean('is_default').notNull().default(false),
+  createdById: uuid('created_by_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt:   timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
 export const pollVotes = pgTable('poll_votes', {
   id:        uuid('id').primaryKey().defaultRandom(),
   pollId:    uuid('poll_id').notNull().references(() => polls.id, { onDelete: 'cascade' }),
+  optionId:  uuid('option_id').references(() => pollOptions.id, { onDelete: 'cascade' }),
   userId:    uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  choice:    text('choice').notNull(),
+  choice:    text('choice'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({
   uniq: unique().on(t.pollId, t.userId),

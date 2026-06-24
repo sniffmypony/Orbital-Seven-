@@ -43,6 +43,13 @@
       "when": 1781012321719,
       "tag": "0005_group_chats",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1782191342279,
+      "tag": "0006_poll_options_and_group_admin",
+      "breakpoints": true
     }
   ]
 }
