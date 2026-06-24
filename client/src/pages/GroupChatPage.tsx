@@ -8,6 +8,7 @@ import GroupFreeTimePanel from '@/components/groups/GroupFreeTimePanel'
 import FriendAvatar from '@/components/friends/FriendAvatar'
 import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
+import type { ChatMessage } from '@/types'
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 
@@ -24,6 +25,7 @@ export default function GroupChatPage() {
   const [urlValue, setUrlValue] = useState('')
   const [uploadErr, setUploadErr] = useState('')
   const [uploading, setUploading] = useState(false)
+  const [infoMessage, setInfoMessage] = useState<ChatMessage | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const pickKind = useRef<'image' | 'video'>('image')
@@ -96,6 +98,8 @@ export default function GroupChatPage() {
   }
 
   const isAdmin = detail.myRole === 'admin'
+  const isOwner = detail.isOwner
+  const canAddMembers = isAdmin || detail.allowMemberAdd
   const friendsNotInGroup = friends.filter((f) => !detail.members.some((m) => m.user.id === f.user.id))
 
   return (
@@ -116,7 +120,18 @@ export default function GroupChatPage() {
           <p className="text-center text-sm text-gray-400 mt-8">No messages yet. Say hello!</p>
         ) : (
           chat.messages.map((m) => (
-            <MessageItem key={m.id} message={m} othersCount={othersCount} onVote={chat.votePoll} onAddEvent={chat.addEvent} />
+            <MessageItem
+              key={m.id}
+              message={m}
+              othersCount={othersCount}
+              canModerate={isAdmin || isOwner}
+              onVote={chat.votePoll}
+              onRetract={chat.retractVote}
+              onAddOption={chat.addPollOption}
+              onAddEvent={chat.addEvent}
+              onDelete={chat.deleteMessage}
+              onInfo={setInfoMessage}
+            />
           ))
         )}
       </div>
@@ -149,21 +164,56 @@ export default function GroupChatPage() {
                   <p className="text-sm font-medium text-gray-900 truncate">
                     {m.user.displayName}{m.isSelf ? ' (you)' : ''}
                   </p>
-                  <p className="text-xs text-gray-400">{m.role === 'admin' ? 'Admin' : 'Member'}</p>
+                  <p className="text-xs text-gray-400">
+                    {m.isOwner ? 'Owner' : m.role === 'admin' ? 'Admin' : 'Member'}
+                  </p>
                 </div>
+
                 {!m.isSelf && m.friendship === 'none' && (
                   <Button size="sm" variant="secondary" onClick={() => chat.addFriend(m.user.id)}>Add friend</Button>
                 )}
                 {!m.isSelf && m.friendship === 'pending' && <span className="text-xs text-gray-400">Requested</span>}
                 {!m.isSelf && m.friendship === 'friends' && <span className="text-xs text-gray-400">Friend</span>}
-                {isAdmin && !m.isSelf && (
+
+                {isOwner && !m.isSelf && !m.isOwner && (
+                  m.role === 'admin' ? (
+                    <button onClick={() => chat.setMemberRole(m.user.id, 'member')} className="text-xs text-gray-400 hover:text-gray-700">Remove admin</button>
+                  ) : (
+                    <button onClick={() => chat.setMemberRole(m.user.id, 'admin')} className="text-xs text-primary-600 hover:text-primary-700">Make admin</button>
+                  )
+                )}
+
+                {isOwner && !m.isSelf && !m.isOwner && (
+                  <button
+                    onClick={() => { if (window.confirm(`Make ${m.user.displayName} the owner? You will become an admin.`)) chat.transferOwner(m.user.id) }}
+                    className="text-xs text-amber-600 hover:text-amber-700"
+                  >
+                    Make owner
+                  </button>
+                )}
+
+                {isAdmin && !m.isSelf && !m.isOwner && (
                   <button onClick={() => chat.leave(m.user.id)} className="text-xs text-gray-400 hover:text-red-500">Remove</button>
                 )}
               </li>
             ))}
           </ul>
 
-          {isAdmin && friendsNotInGroup.length > 0 && (
+          {(isAdmin || isOwner) && (
+            <div className="border-t border-gray-100 pt-3">
+              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={detail.allowMemberAdd}
+                  onChange={(e) => chat.setAllowMemberAdd(e.target.checked)}
+                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                Let any member add people (not just admins)
+              </label>
+            </div>
+          )}
+
+          {canAddMembers && friendsNotInGroup.length > 0 && (
             <div className="border-t border-gray-100 pt-3">
               <p className="text-xs font-medium text-gray-500 mb-2">Add a friend to this group</p>
               <div className="flex flex-wrap gap-2">
@@ -184,9 +234,19 @@ export default function GroupChatPage() {
             <Button size="sm" variant="secondary" onClick={() => chat.toggleMute(!detail.muted)}>
               {detail.muted ? '🔔 Unmute' : '🔕 Mute'}
             </Button>
-            <Button size="sm" variant="danger" onClick={async () => { await chat.leave(detail.members.find((m) => m.isSelf)!.user.id); navigate('/groups') }}>
-              Leave group
-            </Button>
+            {isOwner ? (
+              <Button
+                size="sm"
+                variant="danger"
+                onClick={async () => { if (window.confirm('Delete this group for everyone? This cannot be undone.')) { await chat.deleteGroup(); navigate('/groups') } }}
+              >
+                Delete group
+              </Button>
+            ) : (
+              <Button size="sm" variant="danger" onClick={async () => { await chat.leave(detail.members.find((m) => m.isSelf)!.user.id); navigate('/groups') }}>
+                Leave group
+              </Button>
+            )}
           </div>
         </div>
       </Modal>
@@ -242,6 +302,40 @@ export default function GroupChatPage() {
 
       <Modal open={panel === 'event'} onClose={() => setPanel(null)} title="New event">
         <EventForm onSubmit={async (e) => { await chat.createEvent(e); setPanel(null) }} onCancel={() => setPanel(null)} />
+      </Modal>
+
+      <Modal open={infoMessage !== null} onClose={() => setInfoMessage(null)} title="Message info">
+        {infoMessage && (() => {
+          const seenIds = new Set(infoMessage.readBy)
+          const seen = detail.members.filter((m) => seenIds.has(m.user.id))
+          const notSeen = detail.members.filter((m) => !seenIds.has(m.user.id) && m.user.id !== infoMessage.sender.id)
+          return (
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm font-semibold text-gray-900 mb-1">Seen by ({seen.length})</p>
+                {seen.length === 0 ? (
+                  <p className="text-sm text-gray-400">No one has seen this yet.</p>
+                ) : (
+                  <ul className="space-y-1">
+                    {seen.map((m) => (
+                      <li key={m.user.id} className="text-sm text-gray-700">✓ {m.user.displayName}{m.isSelf ? ' (you)' : ''}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              {notSeen.length > 0 && (
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 mb-1">Not seen yet ({notSeen.length})</p>
+                  <ul className="space-y-1">
+                    {notSeen.map((m) => (
+                      <li key={m.user.id} className="text-sm text-gray-400">{m.user.displayName}{m.isSelf ? ' (you)' : ''}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )
+        })()}
       </Modal>
     </div>
   )

@@ -146,6 +146,7 @@ export interface GroupMember {
   user: GroupUser
   role: string
   isSelf: boolean
+  isOwner: boolean
   friendship: GroupFriendship
 }
 
@@ -154,10 +155,15 @@ export interface GroupDetail {
   members: GroupMember[]
   myRole: string
   muted: boolean
+  ownerId: string
+  isOwner: boolean
+  allowMemberAdd: boolean
 }
 
 export interface PollOption {
-  choice: string
+  id: string
+  label: string
+  isDefault: boolean
   voters: string[]
 }
 

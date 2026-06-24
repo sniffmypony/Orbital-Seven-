@@ -42,17 +42,58 @@ export function useGroupChat(groupId: string) {
     await load()
   }, [getToken, groupId, load])
 
+  const deleteMessage = useCallback(async (messageId: string) => {
+    const token = await getToken()
+    await api.delete(`/api/groups/${groupId}/messages/${messageId}`, token ?? undefined)
+    await load()
+  }, [getToken, groupId, load])
+
   const createPoll = useCallback(async (question: string) => {
     const token = await getToken()
     await api.post(`/api/groups/${groupId}/polls`, { question }, token ?? undefined)
     await load()
   }, [getToken, groupId, load])
 
-  const votePoll = useCallback(async (pollId: string, choice: string) => {
+  const votePoll = useCallback(async (pollId: string, optionId: string) => {
     const token = await getToken()
-    await api.post(`/api/groups/${groupId}/polls/${pollId}/vote`, { choice }, token ?? undefined)
+    await api.post(`/api/groups/${groupId}/polls/${pollId}/vote`, { optionId }, token ?? undefined)
     await load()
   }, [getToken, groupId, load])
+
+  const retractVote = useCallback(async (pollId: string) => {
+    const token = await getToken()
+    await api.delete(`/api/groups/${groupId}/polls/${pollId}/vote`, token ?? undefined)
+    await load()
+  }, [getToken, groupId, load])
+
+  const addPollOption = useCallback(async (pollId: string, label: string) => {
+    const token = await getToken()
+    await api.post(`/api/groups/${groupId}/polls/${pollId}/options`, { label }, token ?? undefined)
+    await load()
+  }, [getToken, groupId, load])
+
+  const setMemberRole = useCallback(async (userId: string, role: 'admin' | 'member') => {
+    const token = await getToken()
+    await api.patch(`/api/groups/${groupId}/members/${userId}/role`, { role }, token ?? undefined)
+    await load()
+  }, [getToken, groupId, load])
+
+  const setAllowMemberAdd = useCallback(async (allowMemberAdd: boolean) => {
+    const token = await getToken()
+    await api.patch(`/api/groups/${groupId}`, { allowMemberAdd }, token ?? undefined)
+    await load()
+  }, [getToken, groupId, load])
+
+  const transferOwner = useCallback(async (userId: string) => {
+    const token = await getToken()
+    await api.post(`/api/groups/${groupId}/transfer-owner`, { userId }, token ?? undefined)
+    await load()
+  }, [getToken, groupId, load])
+
+  const deleteGroup = useCallback(async () => {
+    const token = await getToken()
+    await api.delete(`/api/groups/${groupId}`, token ?? undefined)
+  }, [getToken, groupId])
 
   const createEvent = useCallback(async (e: { title: string; day: string; startTime: string; endTime: string; venue: string }) => {
     const token = await getToken()
@@ -95,7 +136,8 @@ export function useGroupChat(groupId: string) {
 
   return {
     detail, messages, loading, error,
-    send, sendMedia, createPoll, votePoll, createEvent, addEvent,
-    leave, toggleMute, addMember, addFriend, fetchFreeTime, reload: load,
+    send, sendMedia, deleteMessage, createPoll, votePoll, retractVote, addPollOption, createEvent, addEvent,
+    leave, toggleMute, addMember, addFriend, setMemberRole, setAllowMemberAdd,
+    transferOwner, deleteGroup, fetchFreeTime, reload: load,
   }
 }

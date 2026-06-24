@@ -3,30 +3,58 @@ import { formatTimeDisplay } from '@/lib/timeUtils'
 import Button from '@/components/ui/Button'
 import type { ChatMessage } from '@/types'
 
-const POLL_META: Record<string, { emoji: string; label: string }> = {
-  coming: { emoji: '😄', label: "I'm coming!" },
-  maybe:  { emoji: '🤔', label: 'Maybe' },
-  cant:   { emoji: '😢', label: 'Sorry, I have other plans' },
-}
-
 interface MessageItemProps {
   message: ChatMessage
   othersCount: number
-  onVote: (pollId: string, choice: string) => void
+  canModerate: boolean
+  onVote: (pollId: string, optionId: string) => void
+  onRetract: (pollId: string) => void
+  onAddOption: (pollId: string, label: string) => void
   onAddEvent: (eventId: string, recurrence: 'once' | 'weeks' | 'never', weeks: number) => Promise<void>
+  onDelete: (messageId: string) => void
+  onInfo: (message: ChatMessage) => void
 }
 
 function timeLabel(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-export default function MessageItem({ message, othersCount, onVote, onAddEvent }: MessageItemProps) {
+export default function MessageItem({ message, othersCount, canModerate, onVote, onRetract, onAddOption, onAddEvent, onDelete, onInfo }: MessageItemProps) {
   const mine = message.mine
   const allRead = othersCount > 0 && message.readBy.length >= othersCount
+  const canDelete = mine || canModerate
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
 
   return (
     <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-      <div className={`max-w-[78%] rounded-2xl px-3 py-2 ${mine ? 'bg-primary-600 text-white' : 'bg-white border border-gray-200 text-gray-900'}`}>
+      {menu && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setMenu(null)} />
+          <div
+            className="fixed z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 text-sm"
+            style={{ top: menu.y, left: menu.x }}
+          >
+            <button
+              onClick={() => { setMenu(null); onInfo(message) }}
+              className="block w-full text-left px-4 py-1.5 hover:bg-gray-100 text-gray-700"
+            >
+              ℹ️ Info
+            </button>
+            {canDelete && (
+              <button
+                onClick={() => { setMenu(null); if (window.confirm('Delete this message for everyone?')) onDelete(message.id) }}
+                className="block w-full text-left px-4 py-1.5 hover:bg-gray-100 text-red-600"
+              >
+                🗑️ Delete
+              </button>
+            )}
+          </div>
+        </>
+      )}
+      <div
+        onContextMenu={(e) => { e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY }) }}
+        className={`max-w-[78%] rounded-2xl px-3 py-2 cursor-default ${mine ? 'bg-primary-600 text-white' : 'bg-white border border-gray-200 text-gray-900'}`}
+      >
         {!mine && <p className="text-xs font-semibold text-primary-600 mb-0.5">{message.sender.displayName}</p>}
 
         {message.kind === 'text' && <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>}
@@ -39,7 +67,9 @@ export default function MessageItem({ message, othersCount, onVote, onAddEvent }
           <video src={message.mediaUrl} controls className="rounded-lg max-h-64" />
         )}
 
-        {message.poll && <PollCard message={message} onVote={onVote} mine={mine} />}
+        {message.poll && (
+          <PollCard message={message} onVote={onVote} onRetract={onRetract} onAddOption={onAddOption} mine={mine} />
+        )}
 
         {message.event && <EventCard message={message} onAddEvent={onAddEvent} mine={mine} />}
 
@@ -56,21 +86,31 @@ export default function MessageItem({ message, othersCount, onVote, onAddEvent }
   )
 }
 
-function PollCard({ message, onVote, mine }: { message: ChatMessage; onVote: (p: string, c: string) => void; mine: boolean }) {
+function PollCard({
+  message, onVote, onRetract, onAddOption, mine,
+}: {
+  message: ChatMessage
+  onVote: (p: string, optionId: string) => void
+  onRetract: (p: string) => void
+  onAddOption: (p: string, label: string) => void
+  mine: boolean
+}) {
   const poll = message.poll!
   const total = poll.options.reduce((sum, o) => sum + o.voters.length, 0)
+  const [adding, setAdding] = useState(false)
+  const [label, setLabel] = useState('')
+
   return (
     <div className={`rounded-lg p-2 ${mine ? 'bg-primary-500/40' : 'bg-gray-50'}`}>
       <p className="text-sm font-semibold mb-2">📊 {poll.question}</p>
       <div className="space-y-1.5">
         {poll.options.map((o) => {
-          const meta = POLL_META[o.choice]
-          const picked = poll.myVote === o.choice
+          const picked = poll.myVote === o.id
           return (
             <button
-              key={o.choice}
-              onClick={() => onVote(poll.id, o.choice)}
-              title={o.voters.join(', ')}
+              key={o.id}
+              onClick={() => (picked ? onRetract(poll.id) : onVote(poll.id, o.id))}
+              title={o.voters.length ? o.voters.join(', ') : 'No votes yet'}
               className={[
                 'w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-sm border transition-colors',
                 picked
@@ -78,13 +118,40 @@ function PollCard({ message, onVote, mine }: { message: ChatMessage; onVote: (p:
                   : mine ? 'bg-white/80 border-white/60 text-gray-800 hover:bg-white' : 'bg-white border-gray-200 hover:bg-gray-50',
               ].join(' ')}
             >
-              <span>{meta.emoji} {meta.label}</span>
+              <span className="text-left">{o.label}{picked ? ' ✓' : ''}</span>
               <span className="text-xs font-semibold">{o.voters.length}</span>
             </button>
           )
         })}
       </div>
-      <p className={`text-[10px] mt-1 ${mine ? 'text-primary-100' : 'text-gray-400'}`}>{total} vote{total === 1 ? '' : 's'}</p>
+
+      {adding ? (
+        <div className="flex gap-1.5 mt-2">
+          <input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="How about 2pm instead..."
+            className="flex-1 border border-gray-300 rounded-md px-2 py-1 text-xs text-gray-800"
+          />
+          <button
+            onClick={() => { if (label.trim()) { onAddOption(poll.id, label.trim()); setLabel(''); setAdding(false) } }}
+            className="px-2 py-1 rounded-md bg-primary-600 text-white text-xs"
+          >
+            Add
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setAdding(true)}
+          className={`text-xs mt-2 underline ${mine ? 'text-primary-100' : 'text-primary-600'}`}
+        >
+          + Propose another option
+        </button>
+      )}
+
+      <p className={`text-[10px] mt-1 ${mine ? 'text-primary-100' : 'text-gray-400'}`}>
+        {total} vote{total === 1 ? '' : 's'} · tap your choice again to undo
+      </p>
     </div>
   )
 }
