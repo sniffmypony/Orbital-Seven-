@@ -8,7 +8,7 @@ router.get('/module/:code', requireAuth, async (req, res, next) => {
   try {
     const { code }   = req.params
     const semester   = parseInt(req.query.semester as string) || 1
-    const year       = (req.query.year as string) || process.env.NUSMODS_ACADEMIC_YEAR || '2024-2025'
+    const year       = (req.query.year as string) || process.env.NUSMODS_ACADEMIC_YEAR || '2026-2027'
 
     const moduleData = await getModuleData(code, semester, year)
     const grouped    = groupLessonsByType(moduleData, semester)

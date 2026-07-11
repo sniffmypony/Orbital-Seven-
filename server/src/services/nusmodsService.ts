@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm'
 import { db } from '../db'
 import { nusmodsCache } from '../db/schema'
 
-const ACADEMIC_YEAR = process.env.NUSMODS_ACADEMIC_YEAR ?? '2025-2026'
+const ACADEMIC_YEAR = process.env.NUSMODS_ACADEMIC_YEAR ?? '2026-2027'
 const NUSMODS_BASE  = `https://api.nusmods.com/v2`
 
 const LESSON_TYPE_MAP: Record<string, string> = {

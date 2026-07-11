@@ -122,7 +122,7 @@ router.post('/import', requireAuth, async (req, res, next) => {
     }
 
     const parsed     = parseNusmodsShareUrl(shareUrl)
-    const academicYear = year ?? process.env.NUSMODS_ACADEMIC_YEAR ?? '2024-2025'
+    const academicYear = year ?? process.env.NUSMODS_ACADEMIC_YEAR ?? '2026-2027'
 
     const existingBlocks = await db
       .select({ moduleCode: timetableBlocks.moduleCode, color: timetableBlocks.color })
