@@ -30,6 +30,7 @@ export default function CustomBlockForm({ onSubmit, onCancel, friends }: CustomB
   const [repeat,     setRepeat]     = useState<'weekly' | 'once'>('weekly')
   const [visibility, setVisibility] = useState<BlockVisibility>('friends')
   const [visibleTo,  setVisibleTo]  = useState<string[]>([])
+  const [profileVisible, setProfileVisible] = useState(false)
   const [saving,     setSaving]     = useState(false)
   const [err,        setErr]        = useState('')
   const [nightPrompt, setNightPrompt] = useState(false)
@@ -58,6 +59,7 @@ export default function CustomBlockForm({ onSubmit, onCancel, friends }: CustomB
         color,
         visibility,
         visibleTo,
+        profileVisible,
       })
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Failed to save.')
@@ -193,6 +195,17 @@ export default function CustomBlockForm({ onSubmit, onCancel, friends }: CustomB
         friends={friends}
         onChange={(v, list) => { setVisibility(v); setVisibleTo(list) }}
       />
+
+      <label className={`flex items-center gap-2 text-sm cursor-pointer ${visibility === 'private' ? 'text-gray-400' : 'text-gray-700'}`}>
+        <input
+          type="checkbox"
+          checked={profileVisible && visibility !== 'private'}
+          disabled={visibility === 'private'}
+          onChange={(e) => setProfileVisible(e.target.checked)}
+          className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+        />
+        Show on my profile (group members who are not friends can see this)
+      </label>
 
       {err && <p className="text-sm text-red-600">{err}</p>}
 

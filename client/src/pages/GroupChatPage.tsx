@@ -107,10 +107,14 @@ export default function GroupChatPage() {
       <div className="flex items-center gap-3">
         <Link to="/groups" className="text-sm font-medium text-primary-600 hover:text-primary-700">←</Link>
         <GroupAvatar name={detail.group.name} avatarUrl={detail.group.avatarUrl} size={40} />
-        <div className="min-w-0 flex-1">
-          <h1 className="text-lg font-bold text-gray-900 truncate">{detail.group.name}</h1>
-          <p className="text-xs text-gray-500">{detail.members.length} members</p>
-        </div>
+        <button
+          onClick={() => navigate(`/groups/${id}/overview`)}
+          className="min-w-0 flex-1 text-left group"
+          title="View the group's timetable overview"
+        >
+          <h1 className="text-lg font-bold text-gray-900 truncate group-hover:text-primary-600">{detail.group.name}</h1>
+          <p className="text-xs text-gray-500">{detail.members.length} members · tap name for timetable overview</p>
+        </button>
         <Button size="sm" variant="secondary" onClick={() => setPanel('freetime')}>Free time</Button>
         <Button size="sm" variant="secondary" onClick={() => setPanel('members')}>Members</Button>
       </div>
@@ -131,6 +135,7 @@ export default function GroupChatPage() {
               onAddEvent={chat.addEvent}
               onDelete={chat.deleteMessage}
               onInfo={setInfoMessage}
+              onSenderClick={(uid) => navigate(`/groups/${id}/member/${uid}`)}
             />
           ))
         )}
@@ -160,14 +165,18 @@ export default function GroupChatPage() {
             {detail.members.map((m) => (
               <li key={m.user.id} className="flex items-center gap-3">
                 <FriendAvatar user={{ id: m.user.id, displayName: m.user.displayName, email: '', avatarUrl: m.user.avatarUrl }} size={36} />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-900 truncate">
+                <button
+                  onClick={() => { setPanel(null); navigate(`/groups/${id}/member/${m.user.id}`) }}
+                  className="min-w-0 flex-1 text-left"
+                  title={`View ${m.user.displayName}'s timetable`}
+                >
+                  <p className="text-sm font-medium text-gray-900 truncate hover:text-primary-600 hover:underline">
                     {m.user.displayName}{m.isSelf ? ' (you)' : ''}
                   </p>
                   <p className="text-xs text-gray-400">
                     {m.isOwner ? 'Owner' : m.role === 'admin' ? 'Admin' : 'Member'}
                   </p>
-                </div>
+                </button>
 
                 {!m.isSelf && m.friendship === 'none' && (
                   <Button size="sm" variant="secondary" onClick={() => chat.addFriend(m.user.id)}>Add friend</Button>

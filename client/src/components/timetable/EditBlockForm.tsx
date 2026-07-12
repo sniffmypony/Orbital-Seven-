@@ -23,6 +23,7 @@ interface EditBlockFormProps {
     color:      string
     visibility: BlockVisibility
     visibleTo:  string[]
+    profileVisible: boolean
   }) => Promise<void>
   onCancel: () => void
   friends:  Friend[]
@@ -42,6 +43,7 @@ export default function EditBlockForm({ block, onSave, onCancel, friends }: Edit
   const [color,      setColor]      = useState(block.color)
   const [visibility, setVisibility] = useState<BlockVisibility>(block.visibility)
   const [visibleTo,  setVisibleTo]  = useState<string[]>(block.visibleTo ?? [])
+  const [profileVisible, setProfileVisible] = useState(block.profileVisible)
   const [saving,     setSaving]     = useState(false)
   const [err,        setErr]        = useState('')
   const [nightPrompt, setNightPrompt] = useState(false)
@@ -60,6 +62,7 @@ export default function EditBlockForm({ block, onSave, onCancel, friends }: Edit
         color,
         visibility,
         visibleTo,
+        profileVisible: visibility === 'private' ? false : profileVisible,
       })
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Failed to save.')
@@ -182,6 +185,17 @@ export default function EditBlockForm({ block, onSave, onCancel, friends }: Edit
         friends={friends}
         onChange={(v, list) => { setVisibility(v); setVisibleTo(list) }}
       />
+
+      <label className={`flex items-center gap-2 text-sm cursor-pointer ${visibility === 'private' ? 'text-gray-400' : 'text-gray-700'}`}>
+        <input
+          type="checkbox"
+          checked={profileVisible && visibility !== 'private'}
+          disabled={visibility === 'private'}
+          onChange={(e) => setProfileVisible(e.target.checked)}
+          className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+        />
+        Show on my profile (group members who are not friends can see this)
+      </label>
 
       {err && <p className="text-sm text-red-600">{err}</p>}
 

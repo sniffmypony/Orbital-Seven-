@@ -9,6 +9,8 @@ import FriendTimetablePage from '@/pages/FriendTimetablePage'
 import FreeTimePage from '@/pages/FreeTimePage'
 import GroupsPage from '@/pages/GroupsPage'
 import GroupChatPage from '@/pages/GroupChatPage'
+import GroupOverviewPage from '@/pages/GroupOverviewPage'
+import GroupMemberTimetablePage from '@/pages/GroupMemberTimetablePage'
 import ProfilePage from '@/pages/ProfilePage'
 
 export default function App() {
@@ -25,6 +27,8 @@ export default function App() {
               <Route path="/freetime" element={<FreeTimePage />} />
               <Route path="/groups" element={<GroupsPage />} />
               <Route path="/groups/:groupId" element={<GroupChatPage />} />
+              <Route path="/groups/:groupId/overview" element={<GroupOverviewPage />} />
+              <Route path="/groups/:groupId/member/:memberId" element={<GroupMemberTimetablePage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

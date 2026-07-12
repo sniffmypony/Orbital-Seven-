@@ -4,8 +4,8 @@ import { api } from '@/lib/api'
 import type { TimetableBlock, BlockVisibility } from '@/types'
 
 export type NewBlock =
-  Omit<TimetableBlock, 'id' | 'userId' | 'createdAt' | 'visibility' | 'visibleTo' | 'note'>
-  & { visibility?: BlockVisibility; visibleTo?: string[]; note?: string | null }
+  Omit<TimetableBlock, 'id' | 'userId' | 'createdAt' | 'visibility' | 'visibleTo' | 'note' | 'profileVisible'>
+  & { visibility?: BlockVisibility; visibleTo?: string[]; note?: string | null; profileVisible?: boolean }
 
 export function useTimetable() {
   const { getToken } = useAuth()
@@ -54,7 +54,7 @@ export function useTimetable() {
 
   const editBlock = useCallback(async (
     id: string,
-    updates: { day?: string; startTime?: string; endTime?: string; venue?: string | null; note?: string | null; color?: string; title?: string; visibility?: string; visibleTo?: string[] }
+    updates: { day?: string; startTime?: string; endTime?: string; venue?: string | null; note?: string | null; color?: string; title?: string; visibility?: string; visibleTo?: string[]; profileVisible?: boolean }
   ) => {
     const token = await getToken()
     await api.put(`/api/timetable/${id}`, updates, token ?? undefined)

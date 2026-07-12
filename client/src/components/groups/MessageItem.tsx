@@ -13,13 +13,14 @@ interface MessageItemProps {
   onAddEvent: (eventId: string, recurrence: 'once' | 'weeks' | 'never', weeks: number) => Promise<void>
   onDelete: (messageId: string) => void
   onInfo: (message: ChatMessage) => void
+  onSenderClick: (userId: string) => void
 }
 
 function timeLabel(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-export default function MessageItem({ message, othersCount, canModerate, onVote, onRetract, onAddOption, onAddEvent, onDelete, onInfo }: MessageItemProps) {
+export default function MessageItem({ message, othersCount, canModerate, onVote, onRetract, onAddOption, onAddEvent, onDelete, onInfo, onSenderClick }: MessageItemProps) {
   const mine = message.mine
   const allRead = othersCount > 0 && message.readBy.length >= othersCount
   const canDelete = mine || canModerate
@@ -55,7 +56,15 @@ export default function MessageItem({ message, othersCount, canModerate, onVote,
         onContextMenu={(e) => { e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY }) }}
         className={`max-w-[78%] rounded-2xl px-3 py-2 cursor-default ${mine ? 'bg-primary-600 text-white' : 'bg-white border border-gray-200 text-gray-900'}`}
       >
-        {!mine && <p className="text-xs font-semibold text-primary-600 mb-0.5">{message.sender.displayName}</p>}
+        {!mine && (
+          <button
+            onClick={() => onSenderClick(message.sender.id)}
+            className="block text-xs font-semibold text-primary-600 mb-0.5 hover:underline"
+            title={`View ${message.sender.displayName}'s timetable`}
+          >
+            {message.sender.displayName}
+          </button>
+        )}
 
         {message.kind === 'text' && <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>}
 

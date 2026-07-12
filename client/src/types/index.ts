@@ -45,6 +45,7 @@ export interface TimetableBlock {
   color: string
   visibility: BlockVisibility
   visibleTo: string[]
+  profileVisible: boolean
   createdAt: string
 }
 
@@ -214,6 +215,29 @@ export interface GroupAvailability {
   totalCount: number
   everyoneFree: GroupAvailabilitySlot[]
   bestSlots: GroupAvailabilitySlot[]
+}
+
+export interface OverlapBusyEntry {
+  name: string
+  title: string
+  venue: string | null
+}
+
+export interface OverlapSegment {
+  start: string
+  end: string
+  busy: OverlapBusyEntry[]
+}
+
+export interface GroupOverlap {
+  days: Record<string, OverlapSegment[]>
+}
+
+export interface MemberTimetable {
+  user: GroupUser
+  blocks: TimetableBlock[]
+  isFriend: boolean
+  isSelf: boolean
 }
 
 export interface Event {
