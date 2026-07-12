@@ -7,9 +7,9 @@ import {
 } from '../db/schema'
 import { requireAuth, getClerkUserId } from '../middleware/auth'
 import { getOrCreateDbUser } from '../services/userService'
-import { getFriendshipBetween } from '../services/friendService'
-import { getVisibleBlocks } from '../services/timetableService'
-import { computeGroupAvailability } from '../services/groupAvailabilityService'
+import { getFriendshipBetween, areFriends } from '../services/friendService'
+import { getViewableBlocks } from '../services/timetableService'
+import { computeGroupAvailability, computeGroupOverlap } from '../services/groupAvailabilityService'
 
 const router = Router()
 
@@ -711,11 +711,80 @@ router.get('/:id/freetime', requireAuth, async (req, res, next) => {
     const participants = memberUsers.map((u) => ({ id: u.id, name: u.id === me.id ? 'You' : u.displayName }))
     const blocksByUser = []
     for (const p of participants) {
-      blocksByUser.push(await getVisibleBlocks(p.id, me.id))
+      const isFriend = p.id === me.id ? true : await areFriends(me.id, p.id)
+      blocksByUser.push(await getViewableBlocks(p.id, me.id, isFriend))
     }
 
     const availability = computeGroupAvailability(participants, blocksByUser)
     res.json({ totalCount: participants.length, ...availability })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.get('/:id/overlap', requireAuth, async (req, res, next) => {
+  try {
+    const me = await getOrCreateDbUser(getClerkUserId(req))
+    const membership = await getMembership(req.params.id, me.id)
+    if (!membership) {
+      res.status(403).json({ message: 'You are not a member of this group.' })
+      return
+    }
+
+    const memberRows = await db.select().from(groupMembers).where(eq(groupMembers.groupId, req.params.id))
+    const memberIdSet = new Set(memberRows.map((m) => m.userId))
+
+    const raw = String(req.query.memberIds ?? '').trim()
+    const requested = raw ? raw.split(',').map((s) => s.trim()).filter(Boolean) : []
+    const ids = Array.from(new Set(requested.filter((id) => memberIdSet.has(id))))
+
+    if (ids.length === 0) {
+      res.json({ days: {} })
+      return
+    }
+
+    const userRows = await db.select().from(users).where(inArray(users.id, ids))
+    const userMap = new Map(userRows.map((u) => [u.id, u]))
+    const participants = ids.map((id) => ({ id, name: id === me.id ? 'You' : userMap.get(id)!.displayName }))
+
+    const blocksByUser = []
+    for (const p of participants) {
+      const isFriend = p.id === me.id ? true : await areFriends(me.id, p.id)
+      blocksByUser.push(await getViewableBlocks(p.id, me.id, isFriend))
+    }
+
+    res.json({ days: computeGroupOverlap(participants, blocksByUser) })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.get('/:id/members/:memberId/timetable', requireAuth, async (req, res, next) => {
+  try {
+    const me = await getOrCreateDbUser(getClerkUserId(req))
+    const membership = await getMembership(req.params.id, me.id)
+    if (!membership) {
+      res.status(403).json({ message: 'You are not a member of this group.' })
+      return
+    }
+
+    const target = await getMembership(req.params.id, req.params.memberId)
+    if (!target) {
+      res.status(404).json({ message: 'That user is not a member of this group.' })
+      return
+    }
+
+    const [u] = await db.select().from(users).where(eq(users.id, req.params.memberId)).limit(1)
+    if (!u) {
+      res.status(404).json({ message: 'User not found.' })
+      return
+    }
+
+    const isSelf = u.id === me.id
+    const isFriend = isSelf ? true : await areFriends(me.id, u.id)
+    const blocks = await getViewableBlocks(u.id, me.id, isFriend)
+
+    res.json({ user: publicUser(u), blocks, isFriend: !isSelf && isFriend, isSelf })
   } catch (err) {
     next(err)
   }

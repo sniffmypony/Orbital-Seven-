@@ -50,6 +50,13 @@
       "when": 1782191342279,
       "tag": "0006_poll_options_and_group_admin",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1783854237787,
+      "tag": "0007_profile_visible",
+      "breakpoints": true
     }
   ]
 }

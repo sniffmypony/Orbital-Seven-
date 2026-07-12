@@ -96,3 +96,65 @@ export function computeGroupAvailability(
 
   return { everyoneFree, bestSlots }
 }
+
+export interface OverlapBusyEntry {
+  name: string
+  title: string
+  venue: string | null
+}
+
+export interface OverlapSegment {
+  start: string
+  end: string
+  busy: OverlapBusyEntry[]
+}
+
+export function computeGroupOverlap(
+  participants: Participant[],
+  blocksByUser: BlockRow[][]
+): Record<string, OverlapSegment[]> {
+  const result: Record<string, OverlapSegment[]> = {}
+
+  const keyOf = (list: OverlapBusyEntry[]) =>
+    list.map((w) => `${w.name}|${w.title}|${w.venue ?? ''}`).sort().join(';')
+
+  for (const day of DAYS) {
+    const entries: Array<{ s: number; e: number; who: OverlapBusyEntry }> = []
+    blocksByUser.forEach((blocks, idx) => {
+      for (const b of blocks) {
+        if (b.day !== day) continue
+        const s = Math.max(WINDOW_START, toMinutes(b.startTime))
+        const e = Math.min(WINDOW_END, toMinutes(b.endTime))
+        if (e > s) {
+          entries.push({ s, e, who: { name: participants[idx].name, title: b.title, venue: b.venue } })
+        }
+      }
+    })
+
+    const boundarySet = new Set<number>([WINDOW_START, WINDOW_END])
+    for (const en of entries) {
+      if (en.s > WINDOW_START && en.s < WINDOW_END) boundarySet.add(en.s)
+      if (en.e > WINDOW_START && en.e < WINDOW_END) boundarySet.add(en.e)
+    }
+    const boundaries = Array.from(boundarySet).sort((a, b) => a - b)
+
+    const segments: OverlapSegment[] = []
+    for (let i = 0; i < boundaries.length - 1; i++) {
+      const a = boundaries[i]
+      const b = boundaries[i + 1]
+      const mid = (a + b) / 2
+      const busy = entries.filter((en) => mid >= en.s && mid < en.e).map((en) => en.who)
+
+      const last = segments[segments.length - 1]
+      if (last && last.end === toHHMM(a) && keyOf(last.busy) === keyOf(busy)) {
+        last.end = toHHMM(b)
+      } else {
+        segments.push({ start: toHHMM(a), end: toHHMM(b), busy })
+      }
+    }
+
+    result[day] = segments
+  }
+
+  return result
+}

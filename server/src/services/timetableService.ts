@@ -44,3 +44,17 @@ export async function getVisibleBlocks(ownerId: string, viewerId: string): Promi
     }
   })
 }
+
+export async function getProfileBlocks(ownerId: string): Promise<BlockRow[]> {
+  const all = await db
+    .select()
+    .from(timetableBlocks)
+    .where(eq(timetableBlocks.userId, ownerId))
+
+  return all.filter((b) => b.profileVisible && b.visibility !== 'private')
+}
+
+export async function getViewableBlocks(ownerId: string, viewerId: string, isFriend: boolean): Promise<BlockRow[]> {
+  if (ownerId === viewerId || isFriend) return getVisibleBlocks(ownerId, viewerId)
+  return getProfileBlocks(ownerId)
+}

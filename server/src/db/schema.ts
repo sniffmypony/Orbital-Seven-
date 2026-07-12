@@ -38,6 +38,7 @@ export const timetableBlocks = pgTable('timetable_blocks', {
   source:      text('source').notNull(),
   color:       text('color').notNull(),
   visibility:  text('visibility').notNull().default('friends'),
+  profileVisible: boolean('profile_visible').notNull().default(false),
   createdAt:   timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })
 

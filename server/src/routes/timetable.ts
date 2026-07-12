@@ -77,10 +77,11 @@ router.post('/', requireAuth, async (req, res, next) => {
     const {
       moduleCode, lessonType, classNo,
       title, day, startTime, endTime, weeks,
-      venue, note, source, color, visibility, visibleTo,
+      venue, note, source, color, visibility, visibleTo, profileVisible,
     } = req.body
 
     const resolvedVisibility = VISIBILITY_VALUES.includes(visibility) ? visibility : dbUser.defaultBlockVisibility
+    const resolvedProfileVisible = typeof profileVisible === 'boolean' ? profileVisible : (source ?? 'custom') === 'nusmods'
 
     const [block] = await db
       .insert(timetableBlocks)
@@ -99,6 +100,7 @@ router.post('/', requireAuth, async (req, res, next) => {
         source: source ?? 'custom',
         color:  color  ?? '#6366f1',
         visibility: resolvedVisibility,
+        profileVisible: resolvedProfileVisible,
       })
       .returning()
 
@@ -196,6 +198,7 @@ router.post('/import', requireAuth, async (req, res, next) => {
               source:     'nusmods',
               color,
               visibility: dbUser.defaultBlockVisibility,
+              profileVisible: true,
             })
             .returning()
 
@@ -264,11 +267,14 @@ router.put('/:id', requireAuth, async (req, res, next) => {
     const clerkId = getClerkUserId(req)
     const dbUser  = await getOrCreateDbUser(clerkId)
 
-    const { title, day, startTime, endTime, weeks, venue, note, color, visibility, visibleTo } = req.body
+    const { title, day, startTime, endTime, weeks, venue, note, color, visibility, visibleTo, profileVisible } = req.body
 
     const updateSet: Record<string, unknown> = { title, day, startTime, endTime, weeks, venue, color }
     if (note !== undefined) {
       updateSet.note = typeof note === 'string' && note.trim() ? note.trim() : null
+    }
+    if (typeof profileVisible === 'boolean') {
+      updateSet.profileVisible = profileVisible
     }
     if (VISIBILITY_VALUES.includes(visibility)) {
       updateSet.visibility = visibility
