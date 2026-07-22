@@ -56,32 +56,41 @@ export function computeGroupAvailability(
     }
     const boundaries = Array.from(boundarySet).sort((a, b) => a - b)
 
-    const raw: AvailabilitySlot[] = []
+    const raw: Array<AvailabilitySlot & { busyKey: string }> = []
     for (let i = 0; i < boundaries.length - 1; i++) {
       const a = boundaries[i]
       const b = boundaries[i + 1]
       const mid = (a + b) / 2
       const busyNames: string[] = []
+      const busyIds: string[] = []
       dayIntervals.forEach((ivs, idx) => {
         const busy = ivs.some(([s, e]) => mid >= s && mid < e)
-        if (busy) busyNames.push(participants[idx].name)
+        if (busy) {
+          busyNames.push(participants[idx].name)
+          busyIds.push(participants[idx].id)
+        }
       })
-      raw.push({ day, start: toHHMM(a), end: toHHMM(b), freeCount: total - busyNames.length, totalCount: total, busyNames })
+      raw.push({
+        day,
+        start: toHHMM(a),
+        end: toHHMM(b),
+        freeCount: total - busyNames.length,
+        totalCount: total,
+        busyNames,
+        busyKey: busyIds.slice().sort().join(','),
+      })
     }
 
+    let lastKey: string | null = null
     for (const seg of raw) {
       const last = segments[segments.length - 1]
-      if (
-        last &&
-        last.day === day &&
-        last.end === seg.start &&
-        last.busyNames.length === seg.busyNames.length &&
-        last.busyNames.every((n) => seg.busyNames.includes(n))
-      ) {
+      const { busyKey, ...slot } = seg
+      if (last && last.day === day && last.end === seg.start && lastKey === busyKey) {
         last.end = seg.end
       } else {
-        segments.push({ ...seg })
+        segments.push({ ...slot })
       }
+      lastKey = busyKey
     }
   }
 

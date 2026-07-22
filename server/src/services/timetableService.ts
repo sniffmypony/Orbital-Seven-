@@ -1,6 +1,7 @@
 import { and, eq, inArray } from 'drizzle-orm'
 import { db } from '../db'
 import { timetableBlocks, timetableBlockVisibility } from '../db/schema'
+import { isBlockedBy } from './friendService'
 
 type BlockRow = typeof timetableBlocks.$inferSelect
 
@@ -51,10 +52,12 @@ export async function getProfileBlocks(ownerId: string): Promise<BlockRow[]> {
     .from(timetableBlocks)
     .where(eq(timetableBlocks.userId, ownerId))
 
-  return all.filter((b) => b.profileVisible && b.visibility !== 'private')
+  return all.filter((b) => b.profileVisible && b.visibility === 'friends')
 }
 
 export async function getViewableBlocks(ownerId: string, viewerId: string, isFriend: boolean): Promise<BlockRow[]> {
-  if (ownerId === viewerId || isFriend) return getVisibleBlocks(ownerId, viewerId)
+  if (ownerId === viewerId) return getVisibleBlocks(ownerId, viewerId)
+  if (await isBlockedBy(ownerId, viewerId)) return []
+  if (isFriend) return getVisibleBlocks(ownerId, viewerId)
   return getProfileBlocks(ownerId)
 }

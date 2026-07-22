@@ -11,6 +11,7 @@ import {
   MODULE_COLORS,
 } from '../services/nusmodsService'
 import { parseNusmodsShareUrl } from '../utils/nusmodsUrlParser'
+import { validateBlockShape } from '../utils/blockValidation'
 
 const router = Router()
 
@@ -79,6 +80,17 @@ router.post('/', requireAuth, async (req, res, next) => {
       title, day, startTime, endTime, weeks,
       venue, note, source, color, visibility, visibleTo, profileVisible,
     } = req.body
+
+    if (typeof title !== 'string' || !title.trim()) {
+      res.status(400).json({ message: 'A title is required.' })
+      return
+    }
+
+    const invalid = validateBlockShape({ day, startTime, endTime })
+    if (invalid) {
+      res.status(400).json({ message: invalid })
+      return
+    }
 
     const resolvedVisibility = VISIBILITY_VALUES.includes(visibility) ? visibility : dbUser.defaultBlockVisibility
     const resolvedProfileVisible = typeof profileVisible === 'boolean' ? profileVisible : (source ?? 'custom') === 'nusmods'
@@ -163,6 +175,20 @@ router.post('/import', requireAuth, async (req, res, next) => {
         continue
       }
 
+      const resolved = []
+      for (const { lessonType, classNo } of selections) {
+        const lessons = getLessonsForSelection(moduleData, parsed.semester, lessonType, classNo)
+
+        if (lessons.length === 0) {
+          failed.push({ moduleCode, lessonType, lessonLabel: expandLessonType(lessonType), classNo, reason: 'no_match', color })
+          continue
+        }
+
+        resolved.push(...lessons)
+      }
+
+      if (resolved.length === 0) continue
+
       await db
         .delete(timetableBlocks)
         .where(
@@ -173,37 +199,28 @@ router.post('/import', requireAuth, async (req, res, next) => {
           )
         )
 
-      for (const { lessonType, classNo } of selections) {
-        const lessons = getLessonsForSelection(moduleData, parsed.semester, lessonType, classNo)
+      for (const lesson of resolved) {
+        const [block] = await db
+          .insert(timetableBlocks)
+          .values({
+            userId:     dbUser.id,
+            moduleCode,
+            lessonType: lesson.lessonType,
+            classNo:    lesson.classNo,
+            title:      `${moduleCode} ${lesson.lessonType}`,
+            day:        lesson.day,
+            startTime:  lesson.startTime,
+            endTime:    lesson.endTime,
+            weeks:      lesson.weeks,
+            venue:      lesson.venue || null,
+            source:     'nusmods',
+            color,
+            visibility: dbUser.defaultBlockVisibility,
+            profileVisible: true,
+          })
+          .returning()
 
-        if (lessons.length === 0) {
-          failed.push({ moduleCode, lessonType, lessonLabel: expandLessonType(lessonType), classNo, reason: 'no_match', color })
-          continue
-        }
-
-        for (const lesson of lessons) {
-          const [block] = await db
-            .insert(timetableBlocks)
-            .values({
-              userId:     dbUser.id,
-              moduleCode,
-              lessonType: lesson.lessonType,
-              classNo:    lesson.classNo,
-              title:      `${moduleCode} ${lesson.lessonType}`,
-              day:        lesson.day,
-              startTime:  lesson.startTime,
-              endTime:    lesson.endTime,
-              weeks:      lesson.weeks,
-              venue:      lesson.venue || null,
-              source:     'nusmods',
-              color,
-              visibility: dbUser.defaultBlockVisibility,
-              profileVisible: true,
-            })
-            .returning()
-
-          createdBlocks.push(block)
-        }
+        createdBlocks.push(block)
       }
     }
 
@@ -268,6 +285,14 @@ router.put('/:id', requireAuth, async (req, res, next) => {
     const dbUser  = await getOrCreateDbUser(clerkId)
 
     const { title, day, startTime, endTime, weeks, venue, note, color, visibility, visibleTo, profileVisible } = req.body
+
+    if (day !== undefined || startTime !== undefined || endTime !== undefined) {
+      const invalid = validateBlockShape({ day, startTime, endTime })
+      if (invalid) {
+        res.status(400).json({ message: invalid })
+        return
+      }
+    }
 
     const updateSet: Record<string, unknown> = { title, day, startTime, endTime, weeks, venue, color }
     if (note !== undefined) {

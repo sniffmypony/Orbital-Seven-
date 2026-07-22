@@ -7,13 +7,15 @@ import {
 } from '../db/schema'
 import { requireAuth, getClerkUserId } from '../middleware/auth'
 import { getOrCreateDbUser } from '../services/userService'
-import { getFriendshipBetween, areFriends } from '../services/friendService'
+import { getFriendshipBetween, areFriends, isBlockedBy } from '../services/friendService'
 import { getViewableBlocks } from '../services/timetableService'
 import { computeGroupAvailability, computeGroupOverlap } from '../services/groupAvailabilityService'
+import { validateBlockShape } from '../utils/blockValidation'
 
 const router = Router()
 
 const DEFAULT_POLL_OPTIONS = ["😄 I'm coming!", '🤔 Maybe', '😢 Sorry, I have other plans']
+const MAX_MESSAGE_LENGTH = 4000
 
 function publicUser(u: { id: string; displayName: string; avatarUrl: string | null }) {
   return { id: u.id, displayName: u.displayName, avatarUrl: u.avatarUrl }
@@ -24,6 +26,16 @@ async function getMembership(groupId: string, userId: string) {
     .select()
     .from(groupMembers)
     .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, userId)))
+    .limit(1)
+  return rows[0] ?? null
+}
+
+async function getPollInGroup(pollId: string, groupId: string) {
+  const rows = await db
+    .select({ id: polls.id })
+    .from(polls)
+    .innerJoin(messages, eq(messages.id, polls.messageId))
+    .where(and(eq(polls.id, pollId), eq(messages.groupId, groupId)))
     .limit(1)
   return rows[0] ?? null
 }
@@ -252,6 +264,10 @@ router.post('/:id/members', requireAuth, async (req, res, next) => {
       return
     }
     const [group] = await db.select().from(groups).where(eq(groups.id, req.params.id)).limit(1)
+    if (!group) {
+      res.status(404).json({ message: 'Group not found.' })
+      return
+    }
     const canAdd = membership.role === 'admin' || group.allowMemberAdd
     if (!canAdd) {
       res.status(403).json({ message: 'Only admins can add members to this group.' })
@@ -260,6 +276,15 @@ router.post('/:id/members', requireAuth, async (req, res, next) => {
     const { userId } = req.body as { userId: string }
     if (!userId) {
       res.status(400).json({ message: 'userId is required.' })
+      return
+    }
+    const [target] = await db.select().from(users).where(eq(users.id, userId)).limit(1)
+    if (!target) {
+      res.status(404).json({ message: 'User not found.' })
+      return
+    }
+    if (userId !== me.id && (await isBlockedBy(userId, me.id) || await isBlockedBy(me.id, userId))) {
+      res.status(403).json({ message: 'You cannot add this user to a group.' })
       return
     }
     await db
@@ -308,9 +333,17 @@ router.delete('/:id/members/:userId', requireAuth, async (req, res, next) => {
       return
     }
     const [group] = await db.select().from(groups).where(eq(groups.id, req.params.id)).limit(1)
+    if (!group) {
+      res.status(204).send()
+      return
+    }
     const target = req.params.userId
     if (target === group.createdById) {
-      res.status(400).json({ message: 'The group owner cannot be removed.' })
+      res.status(400).json({
+        message: target === me.id
+          ? 'Transfer ownership to another member before leaving this group.'
+          : 'The group owner cannot be removed.',
+      })
       return
     }
     if (target !== me.id && membership.role !== 'admin') {
@@ -458,6 +491,10 @@ router.post('/:id/messages', requireAuth, async (req, res, next) => {
       res.status(400).json({ message: 'A media URL is required.' })
       return
     }
+    if (text && text.length > MAX_MESSAGE_LENGTH) {
+      res.status(400).json({ message: `Messages are limited to ${MAX_MESSAGE_LENGTH} characters.` })
+      return
+    }
     const [msg] = await db
       .insert(messages)
       .values({
@@ -562,6 +599,10 @@ router.post('/:id/polls/:pollId/options', requireAuth, async (req, res, next) =>
       res.status(400).json({ message: 'An option label is required.' })
       return
     }
+    if (!(await getPollInGroup(req.params.pollId, req.params.id))) {
+      res.status(404).json({ message: 'Poll not found in this group.' })
+      return
+    }
     await db.insert(pollOptions).values({ pollId: req.params.pollId, label: label.trim(), isDefault: false, createdById: me.id })
     res.status(201).json({ ok: true })
   } catch (err) {
@@ -580,6 +621,10 @@ router.post('/:id/polls/:pollId/vote', requireAuth, async (req, res, next) => {
     const { optionId } = req.body as { optionId: string }
     if (!optionId) {
       res.status(400).json({ message: 'optionId is required.' })
+      return
+    }
+    if (!(await getPollInGroup(req.params.pollId, req.params.id))) {
+      res.status(404).json({ message: 'Poll not found in this group.' })
       return
     }
     const opt = await db.select().from(pollOptions).where(eq(pollOptions.id, optionId)).limit(1)
@@ -605,6 +650,10 @@ router.delete('/:id/polls/:pollId/vote', requireAuth, async (req, res, next) => 
       res.status(403).json({ message: 'You are not a member of this group.' })
       return
     }
+    if (!(await getPollInGroup(req.params.pollId, req.params.id))) {
+      res.status(204).send()
+      return
+    }
     await db.delete(pollVotes).where(and(eq(pollVotes.pollId, req.params.pollId), eq(pollVotes.userId, me.id)))
     res.status(204).send()
   } catch (err) {
@@ -623,8 +672,13 @@ router.post('/:id/events', requireAuth, async (req, res, next) => {
     const { title, day, startTime, endTime, venue } = req.body as {
       title: string; day: string; startTime: string; endTime: string; venue?: string
     }
-    if (!title || !day || !startTime || !endTime) {
-      res.status(400).json({ message: 'title, day, startTime and endTime are required.' })
+    if (!title || !title.trim()) {
+      res.status(400).json({ message: 'An event title is required.' })
+      return
+    }
+    const invalid = validateBlockShape({ day, startTime, endTime })
+    if (invalid) {
+      res.status(400).json({ message: invalid })
       return
     }
     const [msg] = await db
@@ -656,8 +710,8 @@ router.post('/:id/events/:eventId/add', requireAuth, async (req, res, next) => {
       return
     }
     const [ev] = await db.select().from(groupEvents).where(eq(groupEvents.id, req.params.eventId)).limit(1)
-    if (!ev) {
-      res.status(404).json({ message: 'Event not found.' })
+    if (!ev || ev.groupId !== req.params.id) {
+      res.status(404).json({ message: 'Event not found in this group.' })
       return
     }
     const { recurrence, weeks } = req.body as { recurrence: 'once' | 'weeks' | 'never'; weeks?: number }
