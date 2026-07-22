@@ -24,17 +24,19 @@ export function validateBlockTimes(start: string, end: string, nightOwl: boolean
   const s = effectiveMinutes(timeToMinutes(start), nightOwl)
   const e = effectiveMinutes(timeToMinutes(end), nightOwl)
 
+  const limit = nightOwl ? NIGHT_END_MIN : DAY_END_MIN
+  const outOfRange = nightOwl
+    ? 'In Night Owl mode, time slots must be between 8:00 AM and 2:00 AM.'
+    : 'Without Night Owl mode, time slots must be between 8:00 AM and 10:00 PM.'
+
   if (s < DAY_START_MIN) {
     return 'Start time must be from 8:00 AM onwards.'
   }
+  if (s > limit || e > limit) {
+    return outOfRange
+  }
   if (e <= s) {
     return 'End time must be after the start time.'
-  }
-  if (!nightOwl && e > DAY_END_MIN) {
-    return 'Without Night Owl mode, time slots must be between 8:00 AM and 10:00 PM.'
-  }
-  if (nightOwl && e > NIGHT_END_MIN) {
-    return 'In Night Owl mode, time slots must be between 8:00 AM and 2:00 AM.'
   }
   return null
 }
