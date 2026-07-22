@@ -196,29 +196,10 @@ export const eventInvitees = pgTable('event_invitees', {
   uniq: unique().on(t.eventId, t.userId),
 }))
 
-export const feedPosts = pgTable('feed_posts', {
-  id:        uuid('id').primaryKey().defaultRandom(),
-  userId:    uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  content:   text('content').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-})
-
-export const feedReactions = pgTable('feed_reactions', {
-  id:        uuid('id').primaryKey().defaultRandom(),
-  postId:    uuid('post_id').notNull().references(() => feedPosts.id, { onDelete: 'cascade' }),
-  userId:    uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  emoji:     text('emoji').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-}, (t) => ({
-  uniq: unique().on(t.postId, t.userId, t.emoji),
-}))
-
 export const privacySettings = pgTable('privacy_settings', {
   id:                   uuid('id').primaryKey().defaultRandom(),
   userId:               uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }).unique(),
   timetableVisibility:  text('timetable_visibility').notNull().default('friends'),
   freeTimeVisibility:   text('free_time_visibility').notNull().default('friends'),
-  feedVisibility:       text('feed_visibility').notNull().default('friends'),
   updatedAt:            timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 })
