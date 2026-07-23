@@ -256,18 +256,10 @@ export interface EventSlot {
   endDatetime: string
 }
 
-export interface FeedPost {
-  id: string
-  userId: string
-  content: string
-  createdAt: string
-}
-
 export interface PrivacySettings {
   userId: string
   timetableVisibility: Visibility
   freeTimeVisibility: Visibility
-  feedVisibility: Visibility
 }
 
 export interface Profile {
